@@ -354,7 +354,7 @@ function loadLocal(){ try { const t = localStorage.getItem(LS); return t ? norma
 function setStatus(){
   const el = $('#savestat'); if (!el) return;
   el.className = 'save' + (dbDoc ? '' : ' warn');
-  el.innerHTML = `<i></i>${dbDoc ? 'Salvo na sua conta' : 'Salvo neste navegador'}`;
+  el.innerHTML = `<i></i>${dbDoc ? 'Salvo online' : 'Salvo neste navegador'}`;
 }
 function persist(){
   try { localStorage.setItem(LS, JSON.stringify(S)); } catch (e) {}
@@ -376,19 +376,14 @@ async function initStore(){
   if (!S.months) cur = S.start;
   render();
   try {
-    if (!window.claude || !window.claude.use) return;
-    const [db, user, dls] = await Promise.all([window.claude.use('db'), window.claude.use('user'), window.claude.use('downloads')]);
-    dl = dls;
-    if (db && user) {
-      const id = await user.id();
-      if (id) {
-        const ref = db.collection('data/users/' + id).doc('state');
-        const snap = await ref.get();
-        if (snap.exists) { try { S = normalize(JSON.parse(snap.data().json)); } catch (e) {} }
-        dbDoc = ref;
-        if (!snap.exists && local) persist();
-      }
-    }
+    const API='https://c--445ea0b9-2520-4ebf-8832-751b19b49956-prod.lovable.cloud/rest/v1/app_state', KEY='sb_publishable_7t6ExUJhxBEHMvQ3NaX6ug_2F3PUtSc';
+    const H={apikey:KEY,'Content-Type':'application/json'};
+    const r = await fetch(API+'?id=eq.main&select=json',{headers:H});
+    if (!r.ok) throw 0;
+    const rows = await r.json();
+    if (rows.length) { try { S = normalize(JSON.parse(rows[0].json)); } catch (e) {} }
+    dbDoc = { set: async (o) => { const w = await fetch(API+'?on_conflict=id',{method:'POST',headers:{...H,Prefer:'resolution=merge-duplicates'},body:JSON.stringify({id:'main',json:o.json,updated_at:new Date().toISOString()})}); if(!w.ok) throw 0; } };
+    if (!rows.length) persist();
   } catch (e) { dbDoc = null; }
   if (!monthsList().includes(cur)) cur = S.start;
   render();
