@@ -524,6 +524,11 @@ function geral(){
   </section>
 
   <section class="panel">
+    ${head('lav','chart',`Quanto cada um gastou em ${esc(mLabel(cur))}`,'Fatia percentual de cada pessoa sobre o total de compras e assinaturas ativas no mês.')}
+    ${pieChart()}
+  </section>
+
+  <section class="panel">
     ${head('butter','info','Palavras que usamos','Cada termo, em uma frase.')}
     <details class="gl"><summary>Fatura</summary><p>Conta que você paga de uma vez: cartão, plano, curso. É o total que sai da sua conta.</p></details>
     <details class="gl"><summary>Parte de terceiros</summary><p>O que Mãe, Pai e outros devem a você porque usaram sua fatura. Esse dinheiro volta para você.</p></details>
