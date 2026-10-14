@@ -524,6 +524,11 @@ function geral(){
   </section>
 
   <section class="panel">
+    ${head('lav','chart',`Quanto cada um gastou em ${esc(mLabel(cur))}`,'Fatia percentual de cada pessoa sobre o total de compras e assinaturas ativas no mês.')}
+    ${pieChart()}
+  </section>
+
+  <section class="panel">
     ${head('butter','info','Palavras que usamos','Cada termo, em uma frase.')}
     <details class="gl"><summary>Fatura</summary><p>Conta que você paga de uma vez: cartão, plano, curso. É o total que sai da sua conta.</p></details>
     <details class="gl"><summary>Parte de terceiros</summary><p>O que Mãe, Pai e outros devem a você porque usaram sua fatura. Esse dinheiro volta para você.</p></details>
@@ -558,6 +563,35 @@ function catBars(){
   return rows.map(([c, v]) => `<div class="cat"><div class="name"><span class="dot" style="background:var(--${ccol(c)})"></span>${esc(c)}</div>
     <div class="track"><div class="seg s-sky" style="width:${v.me / mx * 100}%"></div><div class="seg s-lav" style="width:${(v.t - v.me) / mx * 100}%"></div></div><div class="val">${money(v.t)}</div></div>`).join('')
     + `<div class="legend"><span><i style="background:var(--sky)"></i>Sua parte</span><span><i style="background:var(--lav)"></i>Terceiros</span></div>`;
+}
+function pieChart(){
+  const by = {};
+  S.purchases.forEach(p => { const a = planAmt(p, cur); if (!a) return; by[p.who] = (by[p.who] || 0) + a; });
+  const rows = Object.entries(by).sort((a, b) => b[1] - a[1]);
+  const total = sum(rows, r => r[1]);
+  if (!rows.length) return emptyBox('Nenhuma compra neste mês', 'Cadastre compras e assinaturas na aba “Compras e parcelas”.');
+  const pct = v => (v / total * 100).toFixed(1).replace('.', ',') + '%';
+  const cx = 115, cy = 110, R = 92, r = 54, pt = (rad, ang) => [cx + rad * Math.cos(ang), cy + rad * Math.sin(ang)];
+  let segs = '', angle = -Math.PI / 2;
+  if (rows.length === 1) {
+    segs = `<circle cx="${cx}" cy="${cy}" r="${(R + r) / 2}" fill="none" stroke="var(--${pcol(rows[0][0])})" stroke-width="${R - r}"/>`;
+  } else rows.forEach(([n, v]) => {
+    const a2 = angle + (v / total) * 2 * Math.PI, large = (v / total) > 0.5 ? 1 : 0;
+    const [x1, y1] = pt(R, angle), [x2, y2] = pt(R, a2 - 0.0001), [x3, y3] = pt(r, a2 - 0.0001), [x4, y4] = pt(r, angle);
+    segs += `<path d="M ${x1.toFixed(2)} ${y1.toFixed(2)} A ${R} ${R} 0 ${large} 1 ${x2.toFixed(2)} ${y2.toFixed(2)} L ${x3.toFixed(2)} ${y3.toFixed(2)} A ${r} ${r} 0 ${large} 0 ${x4.toFixed(2)} ${y4.toFixed(2)} Z" fill="var(--${pcol(n)})"><title>${esc(n)}: ${money(v)} (${pct(v)})</title></path>`;
+    if (v / total >= 0.07) {
+      const [tx, ty] = pt((R + r) / 2, (angle + a2) / 2);
+      segs += `<text x="${tx.toFixed(1)}" y="${ty.toFixed(1)}" text-anchor="middle" dominant-baseline="central" style="fill:#1d2540;font-weight:700;font-size:12px">${pct(v)}</text>`;
+    }
+    angle = a2;
+  });
+  const legend = `<div class="legend" style="margin-top:10px">${rows.map(([n, v]) => `<span><i style="background:var(--${pcol(n)})"></i>${esc(n)} — ${money(v)} (${pct(v)})</span>`).join('')}</div>`;
+  return `<div style="display:grid;gap:14px;align-items:center;grid-template-columns:minmax(230px,300px) 1fr">
+    <svg class="chart" viewBox="0 0 230 220" role="img" aria-label="Gasto percentual de cada pessoa em ${esc(mLabel(cur))}">${segs}
+      <text x="${cx}" y="${cy - 8}" text-anchor="middle" style="fill:var(--ink2);font-size:11px">Total do mês</text>
+      <text x="${cx}" y="${cy + 12}" text-anchor="middle" style="fill:var(--ink);font-weight:700;font-size:14px;font-family:Fraunces,Georgia,serif">${money(total)}</text></svg>
+    <div>${legend}</div></div>
+  <p class="note" style="margin-top:10px">Soma das compras e assinaturas ativas de cada pessoa em ${esc(mLabel(cur))}. Muda sozinho ao trocar o mês ou ajustar itens.</p>`;
 }
 
 /* ------------- receitas ------------- */
