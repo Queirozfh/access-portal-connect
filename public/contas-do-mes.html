@@ -612,6 +612,19 @@ function vReceitas(){
 }
 
 /* ------------- faturas ------------- */
+const isFisico = d => (d || '').normalize('NFD').replace(/[̀-ͯ]/g, '').trim().toLowerCase() === 'fisico';
+function fisicoBreakdown(b, s){
+  const parts = S.people.filter(p => p.inBill).map(p => ({n: p.name, v: s.dev[p.name] || 0})).filter(x => x.v > 0.005);
+  const ded = sum(parts, x => x.v);
+  const gio = r2(b.valor - ded);
+  return `<div class="panel" style="background:var(--sky-bg,var(--lav-bg));border:0;margin:8px 0 0 34px;padding:12px 14px">
+    <p style="margin:0 0 6px"><strong>Divisão automática da fatura “${esc(b.desc)}”</strong> — o total é de ${esc(S.titular)}, descontando a parte de cada um:</p>
+    <ul style="margin:0;padding-left:18px">
+      <li>Total da fatura: <strong>${money(b.valor)}</strong></li>
+      ${parts.map(x => `<li>− ${esc(x.n)}: ${money(x.v)}</li>`).join('')}
+      <li>= Parte de ${esc(S.titular)}: <strong>${money(gio)}</strong>${gio < 0 ? ' (as partes de terceiros passam do total da fatura — confira os valores)' : ''}</li>
+    </ul></div>`;
+}
 function vFaturas(){
   const s = stats(cur), pc = s.faturas ? s.pago / s.faturas * 100 : 0;
   const prev = ymAdd(cur, -1), canCopy = S.bills.some(b => b.month === prev);
@@ -622,9 +635,9 @@ function vFaturas(){
     ${s.bills.length ? `<div class="prog" style="min-width:0;margin:0 0 12px;height:12px" role="img" aria-label="${Math.round(pc)}% pago"><b style="width:${pc}%;background:var(--mint)"></b></div>
     <div class="list">${s.bills.map(b => `<div class="row ${b.paid ? 'done' : ''}">
       <input class="check" type="checkbox" data-act="toggle-bill" data-id="${b.id}" ${b.paid ? 'checked' : ''} aria-label="Marcar ${esc(b.desc)} como paga">
-      <div><div class="ttl">${esc(b.desc)}</div><div class="sub">${b.paid ? chip('mint', 'Paga', 'check') : chip('peach', 'Em aberto', 'time')}</div></div>
+      <div><div class="ttl">${esc(b.desc)}</div><div class="sub">${b.paid ? chip('mint', 'Paga', 'check') : chip('peach', 'Em aberto', 'time')}${isFisico(b.desc) ? chip('sky', 'Atribuída a ' + S.titular, 'check') : ''}</div></div>
       <div class="amt">${money(b.valor)}</div>
-      <div class="acts"><button class="ib" data-act="edit-bill" data-id="${b.id}" aria-label="Editar ${esc(b.desc)}">${ico('edit')}</button><button class="ib del" data-act="del-bill" data-id="${b.id}" aria-label="Excluir ${esc(b.desc)}">${ico('trash')}</button></div></div>`).join('')}</div>
+      <div class="acts"><button class="ib" data-act="edit-bill" data-id="${b.id}" aria-label="Editar ${esc(b.desc)}">${ico('edit')}</button><button class="ib del" data-act="del-bill" data-id="${b.id}" aria-label="Excluir ${esc(b.desc)}">${ico('trash')}</button></div></div>${isFisico(b.desc) ? fisicoBreakdown(b, s) : ''}`).join('')}</div>
     <div class="panel" style="background:var(--lav-bg);border:0;margin-top:14px;padding:14px 16px"><p><strong>Na prática:</strong> das faturas de ${money(s.faturas)}, terceiros devolvem ${money(s.emb)}. Sua parte é <strong>${money(s.liquido)}</strong>.</p></div>`
     : emptyBox('Sem faturas neste mês', 'Use “Nova fatura” ou copie as do mês anterior.')}
     <p class="note" style="margin-top:12px">Faturas de pessoas que pagam por conta própria (como cartões de Lidu) não entram aqui: elas aparecem só em “A receber”.</p>
