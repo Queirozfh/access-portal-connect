@@ -671,7 +671,15 @@ function vCompras(){
 /* ------------- a receber ------------- */
 function vReceber(){
   const s = stats(cur);
-  const cards = S.people.map(p => {
+  const titItems = S.purchases.filter(x => isTit(x.who) && planOn(x, cur)).sort((a, b) => a.desc.localeCompare(b.desc));
+  const titTotal = r2(sum(titItems, x => planAmt(x, cur)));
+  const titCard = `<article class="pcard">
+    <header><div><h3>${esc(S.titular)}</h3><div style="margin-top:4px">${chip('sky', 'Titular — sua própria parte', 'check')}</div></div>${chip('mint', 'Em dia', 'check')}</header>
+    <div class="nums"><div class="t-sky"><small>Total do mês</small><b>${money(titTotal)}</b></div><div class="t-mint"><small>Itens ativos</small><b>${titItems.length}</b></div></div>
+    ${titItems.length ? `<ul aria-label="Itens de ${esc(S.titular)}">${titItems.map(x => `<li><span>${esc(x.desc)} ${x.n != null ? `<small>(${planIdx(x, cur)}/${x.n})</small>` : ''}</span><span>${money(x.valor)}</span></li>`).join('')}</ul>` : `<p class="note" style="margin:8px 0">Sem itens neste mês.</p>`}
+    <p class="note" style="margin:8px 0 0">As compras do titular não entram em cobrança: já são a sua própria parte.</p>
+  </article>`;
+  const cards = [titCard, ...S.people.map(p => {
     const n = p.name, c = pcol(n), dev = s.dev[n] || 0, rec = s.rec[n] || 0, ab = s.aberto[n] || 0, acc = openUntil(n, cur);
     const its = S.purchases.filter(x => x.who === n && planOn(x, cur));
     const rs = S.received.filter(r => r.who === n && r.month === cur);
@@ -682,10 +690,10 @@ function vReceber(){
       ${rs.length ? `<ul>${rs.map(r => `<li><span>${ico('check', '')}Recebido ${money(r.valor)}</span><button class="ib del" style="width:28px;height:28px" data-act="del-recv" data-id="${r.id}" aria-label="Desfazer recebimento">${ico('trash')}</button></li>`).join('')}</ul>` : ''}
       <div class="pills" style="margin-top:10px"><button class="btn" data-act="recv" data-who="${esc(n)}">${ico('plus')}Registrar recebimento</button>${ab > 0.005 ? `<button class="btn" data-act="settle" data-who="${esc(n)}">${ico('check')}Quitar o mês</button>` : ''}</div>
     </article>`;
-  });
+  })];
   return `<section class="panel">
-    ${head('lav','users','Quem te deve','O valor “devido” vem das compras de cada pessoa. Registre o que já foi pago.')}
-    ${S.people.length ? `<div class="people">${cards.join('')}</div>` : emptyBox('Nenhuma pessoa cadastrada', 'Adicione pessoas em “Ajustes”.')}
+    ${head('lav','users','Quem te deve','Compras de todo mundo — o titular e cada pessoa. Registre o que já foi pago.')}
+    <div class="people">${cards.join('')}</div>
   </section>`;
 }
 
