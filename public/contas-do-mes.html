@@ -514,7 +514,7 @@ function geral(){
   </section>
 
   <section class="panel">
-    ${head('lav','chart',`Os ${ml.length} meses lado a lado`,'Toque em uma coluna para ver aquele mês.')}
+    ${head('lav','chart',`Os ${monthsList().length} meses lado a lado`,'Toque em uma coluna para ver aquele mês.')}
     ${barChart()}
     <div class="legend"><span><i style="background:var(--mint)"></i>Receitas</span><span><i style="background:var(--sky)"></i>Sua parte nas faturas</span><span><i style="background:var(--lav)"></i>Mês selecionado</span></div>
   </section>
@@ -705,7 +705,7 @@ function vTempo(){
   const rows = [['Receitas', x => x.receitas, () => 'transparent'], ['Faturas', x => x.faturas, () => 'transparent'], ['Terceiros devolvem', x => x.emb, () => 'transparent'], ['Sua parte', x => x.liquido, () => 'transparent'], ['Resultado', x => x.resultado, tint]];
   const plans = S.purchases.filter(p => ml.some(m => planOn(p, m))).sort((a, b) => a.who.localeCompare(b.who) || a.desc.localeCompare(b.desc));
   return `<section class="panel">
-    ${head('sky','time',`Linha do tempo de ${ml.length} meses`,'Cada mês em uma coluna. Verde: sobra. Rosa: falta.')}
+    ${head('sky','time',`Linha do tempo de ${monthsList().length} meses`,'Cada mês em uma coluna. Verde: sobra. Rosa: falta.')}
     <div class="scroll"><table><thead><tr><th scope="col">Indicador</th>${ml.map(m => `<th scope="col" class="${m === cur ? 'sel' : ''}">${mLabel(m)}</th>`).join('')}</tr></thead>
     <tbody>${rows.map(([l, f, t]) => `<tr><td><strong>${l}</strong></td>${st.map((x, i) => `<td class="${ml[i] === cur ? 'sel' : ''}" style="background:${t(f(x))}">${f(x) ? money(f(x)) : '—'}</td>`).join('')}</tr>`).join('')}</tbody></table></div>
   </section>
