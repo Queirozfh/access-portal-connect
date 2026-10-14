@@ -612,7 +612,7 @@ function vReceitas(){
 }
 
 /* ------------- faturas ------------- */
-const isFisico = d => (d || '').normalize('NFD').replace(/[̀-ͯ]/g, '').trim().toLowerCase() === 'fisico';
+const isFisico = d => (d || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().toLowerCase() === 'fisico';
 function fisicoBreakdown(b, s){
   const parts = S.people.filter(p => p.inBill).map(p => ({n: p.name, v: s.dev[p.name] || 0})).filter(x => x.v > 0.005);
   const ded = sum(parts, x => x.v);
