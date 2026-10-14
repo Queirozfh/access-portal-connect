@@ -690,10 +690,10 @@ function vReceber(){
       ${rs.length ? `<ul>${rs.map(r => `<li><span>${ico('check', '')}Recebido ${money(r.valor)}</span><button class="ib del" style="width:28px;height:28px" data-act="del-recv" data-id="${r.id}" aria-label="Desfazer recebimento">${ico('trash')}</button></li>`).join('')}</ul>` : ''}
       <div class="pills" style="margin-top:10px"><button class="btn" data-act="recv" data-who="${esc(n)}">${ico('plus')}Registrar recebimento</button>${ab > 0.005 ? `<button class="btn" data-act="settle" data-who="${esc(n)}">${ico('check')}Quitar o mês</button>` : ''}</div>
     </article>`;
-  });
+  })];
   return `<section class="panel">
-    ${head('lav','users','Quem te deve','O valor “devido” vem das compras de cada pessoa. Registre o que já foi pago.')}
-    ${S.people.length ? `<div class="people">${cards.join('')}</div>` : emptyBox('Nenhuma pessoa cadastrada', 'Adicione pessoas em “Ajustes”.')}
+    ${head('lav','users','Quem te deve','Compras de todo mundo — o titular e cada pessoa. Registre o que já foi pago.')}
+    <div class="people">${cards.join('')}</div>
   </section>`;
 }
 
