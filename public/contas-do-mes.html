@@ -346,7 +346,7 @@ function normalize(o){
   const d = seed();
   if (!o || typeof o !== 'object') return d;
   for (const k of ['incomes','bills','purchases','received','people','cats']) if (!Array.isArray(o[k])) o[k] = d[k];
-  o.titular = o.titular || d.titular; o.start = o.start || d.start;
+  o.count = Number.isInteger(o.count) && o.count > 0 ? o.count : 12; if (!Array.isArray(o.hidden)) o.hidden = []; o.titular = o.titular || d.titular; o.start = o.start || d.start;
   o.yellow = typeof o.yellow === 'number' ? o.yellow : d.yellow; o.red = typeof o.red === 'number' ? o.red : d.red;
   return o;
 }
@@ -390,7 +390,8 @@ async function initStore(){
 }
 
 /* ============================ cálculos ============================ */
-const monthsList = () => Array.from({length: 12}, (_, i) => ymAdd(S.start, i));
+const monthsList = () => { const l = Array.from({length: S.count || 12}, (_, i) => ymAdd(S.start, i)).filter(m => !(S.hidden || []).includes(m)); return l.length ? l : [S.start]; };
+function monthQuitado(m){ const s = stats(m); return s.bills.every(b => b.paid) && Object.values(s.aberto).every(v => v <= 0.005); }
 const planOn = (p, m) => { const d = ymDiff(m, p.start); return d >= 0 && (p.n == null || d < p.n); };
 const planAmt = (p, m) => planOn(p, m) ? p.valor : 0;
 const planIdx = (p, m) => ymDiff(m, p.start) + 1;
@@ -513,7 +514,7 @@ function geral(){
   </section>
 
   <section class="panel">
-    ${head('lav','chart','Os 12 meses lado a lado','Toque em uma coluna para ver aquele mês.')}
+    ${head('lav','chart',`Os ${monthsList().length} meses lado a lado`,'Toque em uma coluna para ver aquele mês.')}
     ${barChart()}
     <div class="legend"><span><i style="background:var(--mint)"></i>Receitas</span><span><i style="background:var(--sky)"></i>Sua parte nas faturas</span><span><i style="background:var(--lav)"></i>Mês selecionado</span></div>
   </section>
@@ -540,7 +541,7 @@ function geral(){
 function barChart(){
   const ml = monthsList(), st = ml.map(stats);
   const mx = Math.max(1, ...st.map(x => Math.max(x.receitas, Math.max(0, x.liquido))));
-  const W = 720, H = 230, pad = 10, base = H - 28, ch = base - 22, gw = (W - pad * 2) / 12, bw = 17;
+  const W = 720, H = 230, pad = 10, base = H - 28, ch = base - 22, gw = (W - pad * 2) / ml.length, bw = 17;
   let g = '';
   ml.forEach((m, i) => {
     const x = pad + i * gw, a = st[i].receitas / mx * ch, b = Math.max(0, st[i].liquido) / mx * ch, sel = m === cur;
@@ -704,7 +705,7 @@ function vTempo(){
   const rows = [['Receitas', x => x.receitas, () => 'transparent'], ['Faturas', x => x.faturas, () => 'transparent'], ['Terceiros devolvem', x => x.emb, () => 'transparent'], ['Sua parte', x => x.liquido, () => 'transparent'], ['Resultado', x => x.resultado, tint]];
   const plans = S.purchases.filter(p => ml.some(m => planOn(p, m))).sort((a, b) => a.who.localeCompare(b.who) || a.desc.localeCompare(b.desc));
   return `<section class="panel">
-    ${head('sky','time','Linha do tempo de 12 meses','Cada mês em uma coluna. Verde: sobra. Rosa: falta.')}
+    ${head('sky','time',`Linha do tempo de ${monthsList().length} meses`,'Cada mês em uma coluna. Verde: sobra. Rosa: falta.')}
     <div class="scroll"><table><thead><tr><th scope="col">Indicador</th>${ml.map(m => `<th scope="col" class="${m === cur ? 'sel' : ''}">${mLabel(m)}</th>`).join('')}</tr></thead>
     <tbody>${rows.map(([l, f, t]) => `<tr><td><strong>${l}</strong></td>${st.map((x, i) => `<td class="${ml[i] === cur ? 'sel' : ''}" style="background:${t(f(x))}">${f(x) ? money(f(x)) : '—'}</td>`).join('')}</tr>`).join('')}</tbody></table></div>
   </section>
@@ -724,13 +725,18 @@ function vAjustes(){
     ${head('butter','gear','Ajustes','Nome, período, alertas, pessoas e categorias.')}
     <div class="settings">
       <div><div class="field"><label for="s-tit">Seu nome (titular)</label><input id="s-tit" type="text" value="${esc(S.titular)}" data-set="titular"></div>
-        <div class="field"><label for="s-start">Primeiro mês do controle</label><input id="s-start" type="month" value="${esc(S.start)}" data-set="start"><small>A tela mostra 12 meses a partir deste.</small></div>
+        <div class="field"><label for="s-start">Primeiro mês do controle</label><input id="s-start" type="month" value="${esc(S.start)}" data-set="start"><small>A tela mostra ${S.count} meses a partir deste (até ${esc(ymAdd(S.start, S.count - 1))}).</small></div>
+        <div class="pills" style="margin-bottom:10px"><button class="btn" data-act="add-months">${ico('plus')}Acrescentar meses</button>
+          <button class="btn" data-act="del-month">${ico('trash')}Excluir mês atual (${esc(cur)})</button></div>
+        ${S.hidden.length ? `<p class="note">Meses excluídos: ${S.hidden.map(m => `<button class="btn ghost" style="padding:2px 8px" data-act="restore-month" data-m="${m}">${esc(m)} ↺</button>`).join(' ')}</p>` : ''}
         <div class="two"><div class="field"><label for="s-y">Alerta amarelo (%)</label><input id="s-y" inputmode="numeric" value="${Math.round(S.yellow * 100)}" data-set="yellow"></div>
         <div class="field"><label for="s-r">Alerta vermelho (%)</label><input id="s-r" inputmode="numeric" value="${Math.round(S.red * 100)}" data-set="red"></div></div>
         <p class="note">Os alertas avisam quando a sua parte passa dessa fatia da renda.</p></div>
       <div><h3 style="font-size:16px;margin-bottom:6px">Pessoas</h3>
         ${S.people.map((p, i) => `<div class="mini"><div class="grow"><input type="text" value="${esc(p.name)}" data-pname="${i}" aria-label="Nome da pessoa"></div>
           <label class="note" style="display:flex;gap:6px;align-items:center"><input type="checkbox" data-pbill="${i}" ${p.inBill ? 'checked' : ''}>Na minha fatura</label>
+          <button class="ib" data-act="up-person" data-i="${i}" ${i === 0 ? 'disabled' : ''} aria-label="Subir ${esc(p.name)}">▲</button>
+          <button class="ib" data-act="down-person" data-i="${i}" ${i === S.people.length - 1 ? 'disabled' : ''} aria-label="Descer ${esc(p.name)}">▼</button>
           <button class="ib del" data-act="del-person" data-i="${i}" aria-label="Remover ${esc(p.name)}">${ico('trash')}</button></div>`).join('')}
         <button class="btn" style="margin-top:10px" data-act="add-person">${ico('plus')}Adicionar pessoa</button></div>
       <div><h3 style="font-size:16px;margin-bottom:6px">Categorias</h3>
@@ -852,7 +858,7 @@ document.addEventListener('click', e => {
   const find = (arr) => arr.find(x => x.id === id);
   switch (a) {
     case 'prev': { const i = ml.indexOf(cur); if (i > 0) { cur = ml[i - 1]; render(); } break; }
-    case 'next': { const i = ml.indexOf(cur); if (i < 11) { cur = ml[i + 1]; render(); } break; }
+    case 'next': { const i = ml.indexOf(cur); if (i < ml.length - 1) { cur = ml[i + 1]; render(); } break; }
     case 'close': closeModal(); break;
     case 'add-income': formIncome(); break;
     case 'edit-income': formIncome(find(S.incomes)); break;
@@ -873,6 +879,13 @@ document.addEventListener('click', e => {
     case 'add-person': openForm({title:'Nova pessoa', fields:[{name:'name', label:'Nome', type:'text'},{name:'inBill', label:'As compras dela passam pela sua fatura?', type:'select', value:'1', options:[{v:'1', l:'Sim, ela me paga depois'},{v:'0', l:'Não, ela paga por conta própria'}]}],
       validate: v => !v.name ? 'Escreva o nome.' : peopleAll().includes(v.name) ? 'Já existe alguém com esse nome.' : '', onSave: v => S.people.push({name: v.name, inBill: v.inBill === '1'})}); break;
     case 'del-person': { const i = +t.dataset.i, p = S.people[i]; confirmBox(`Remover ${p.name}? Os itens dela continuam cadastrados.`, () => S.people.splice(i, 1), 'Remover'); break; }
+    case 'up-person': case 'down-person': { const i = +t.dataset.i, j = a === 'up-person' ? i - 1 : i + 1; if (j >= 0 && j < S.people.length) { [S.people[i], S.people[j]] = [S.people[j], S.people[i]]; persist(); render(); } break; }
+    case 'add-months': openForm({title:'Acrescentar meses', fields:[{name:'n', label:'Quantos meses a mais?', type:'int', value:'12'}], validate: v => (!Number.isInteger(v.n) || v.n < 1 || v.n > 120) ? 'Informe de 1 a 120.' : '', onSave: v => { S.count += v.n; toast(`Agora vai até ${ymAdd(S.start, S.count - 1)}.`); }, cta:'Acrescentar'}); break;
+    case 'del-month': {
+      if (!monthQuitado(cur)) { toast('Só dá para excluir um mês com todas as faturas pagas e nada a receber.'); break; }
+      if (ml.length <= 1) { toast('Precisa ficar pelo menos um mês.'); break; }
+      confirmBox(`Excluir o mês ${cur} da tela? Ele está quitado.`, () => { S.hidden.push(cur); cur = monthsList()[0]; }); break; }
+    case 'restore-month': S.hidden = S.hidden.filter(m => m !== t.dataset.m); persist(); render(); toast('Mês restaurado.'); break;
     case 'add-cat': openForm({title:'Nova categoria', fields:[{name:'name', label:'Nome', type:'text'}], validate: v => !v.name ? 'Escreva o nome.' : S.cats.includes(v.name) ? 'Essa categoria já existe.' : '', onSave: v => S.cats.push(v.name)}); break;
     case 'exp-csv': saveFile('controle-financeiro.csv', csv(), 'Resumo exportado.'); break;
     case 'exp-json': saveFile('controle-financeiro-copia.json', JSON.stringify(S, null, 1), 'Cópia salva.'); break;
