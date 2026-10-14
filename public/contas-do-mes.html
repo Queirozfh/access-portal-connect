@@ -671,7 +671,15 @@ function vCompras(){
 /* ------------- a receber ------------- */
 function vReceber(){
   const s = stats(cur);
-  const cards = S.people.map(p => {
+  const titItems = S.purchases.filter(x => isTit(x.who) && planOn(x, cur)).sort((a, b) => a.desc.localeCompare(b.desc));
+  const titTotal = r2(sum(titItems, x => planAmt(x, cur)));
+  const titCard = `<article class="pcard">
+    <header><div><h3>${esc(S.titular)}</h3><div style="margin-top:4px">${chip('sky', 'Titular — sua própria parte', 'check')}</div></div>${chip('mint', 'Em dia', 'check')}</header>
+    <div class="nums"><div class="t-sky"><small>Total do mês</small><b>${money(titTotal)}</b></div><div class="t-mint"><small>Itens ativos</small><b>${titItems.length}</b></div></div>
+    ${titItems.length ? `<ul aria-label="Itens de ${esc(S.titular)}">${titItems.map(x => `<li><span>${esc(x.desc)} ${x.n != null ? `<small>(${planIdx(x, cur)}/${x.n})</small>` : ''}</span><span>${money(x.valor)}</span></li>`).join('')}</ul>` : `<p class="note" style="margin:8px 0">Sem itens neste mês.</p>`}
+    <p class="note" style="margin:8px 0 0">As compras do titular não entram em cobrança: já são a sua própria parte.</p>
+  </article>`;
+  const cards = [titCard, ...S.people.map(p => {
     const n = p.name, c = pcol(n), dev = s.dev[n] || 0, rec = s.rec[n] || 0, ab = s.aberto[n] || 0, acc = openUntil(n, cur);
     const its = S.purchases.filter(x => x.who === n && planOn(x, cur));
     const rs = S.received.filter(r => r.who === n && r.month === cur);
