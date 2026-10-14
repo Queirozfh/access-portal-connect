@@ -646,17 +646,23 @@ function vFaturas(){
 }
 
 /* ------------- compras ------------- */
-function vCompras(){
-  const s = stats(cur);
+function comprasItems(){
   let items = S.purchases.filter(p => filt === 'todos' ? true : filt === 'ativos' ? planOn(p, cur) : p.who === filt);
   if (filt !== 'todos' && filt !== 'ativos') items = items.filter(p => planOn(p, cur));
-  items.sort((a, b) => a.who.localeCompare(b.who) || a.desc.localeCompare(b.desc));
+  let next = S.purchases.reduce((m, p) => Math.max(m, typeof p.ord === 'number' ? p.ord : -1), -1) + 1;
+  S.purchases.forEach(p => { if (typeof p.ord !== 'number') p.ord = next++; });
+  items.sort((a, b) => a.ord - b.ord || a.who.localeCompare(b.who) || a.desc.localeCompare(b.desc));
+  return items;
+}
+function vCompras(){
+  const s = stats(cur);
+  const items = comprasItems();
   const pills = [['ativos','Neste mês'],['todos','Todos os itens'], ...peopleAll().map(n => [n, n])];
   return `<section class="panel">
     ${head('lav','bag','Compras, parcelas e assinaturas','Cadastre cada item uma vez. Os meses seguintes aparecem sozinhos.')}
     <div class="bar"><p>Em ${esc(mLabel(cur))}: <strong>${money(s.titular + s.emb + s.fora)}</strong> em itens, sendo <strong>${money(s.titular)}</strong> seus e <strong>${money(s.emb + s.fora)}</strong> de terceiros.</p><button class="btn primary" data-act="add-purchase">${ico('plus')}Novo item</button></div>
     <div class="pills" role="group" aria-label="Filtrar" style="margin-bottom:12px">${pills.map(([k, l]) => `<button class="pill" data-filt="${esc(k)}" aria-pressed="${filt === k}">${esc(l)}</button>`).join('')}</div>
-    ${items.length ? `<div class="list">${items.map(p => {
+    ${items.length ? `<div class="list">${items.map((p, i) => {
       const on = planOn(p, cur), idx = planIdx(p, cur), c = pcol(p.who);
       let prog = '';
       if (p.n != null) { const done = Math.min(p.n, Math.max(0, idx)); prog = `<div class="prog" aria-label="${done} de ${p.n} parcelas"><b style="width:${done / p.n * 100}%;background:var(--${c})"></b></div>`; }
@@ -664,7 +670,7 @@ function vCompras(){
       return `<div class="row"><div class="bubble t-${c}">${ico('bag')}</div>
         <div><div class="ttl">${esc(p.desc)}</div><div class="sub">${chip(c, p.who)}<span class="chip t-${ccol(p.cat)}" style="font-weight:500">${esc(p.cat)}</span><span>${when}</span></div>${prog}${p.obs ? `<div class="note" style="margin-top:4px">${esc(p.obs)}</div>` : ''}</div>
         <div class="amt">${money(p.valor)}<div class="note" style="font-family:Figtree">por mês</div></div>
-        <div class="acts"><button class="ib" data-act="edit-purchase" data-id="${p.id}" aria-label="Editar ${esc(p.desc)}">${ico('edit')}</button><button class="ib del" data-act="del-purchase" data-id="${p.id}" aria-label="Excluir ${esc(p.desc)}">${ico('trash')}</button></div></div>`;
+        <div class="acts"><button class="ib" data-act="up-item" data-id="${p.id}" ${i === 0 ? 'disabled' : ''} aria-label="Subir ${esc(p.desc)}">▲</button><button class="ib" data-act="down-item" data-id="${p.id}" ${i === items.length - 1 ? 'disabled' : ''} aria-label="Descer ${esc(p.desc)}">▼</button><button class="ib" data-act="edit-purchase" data-id="${p.id}" aria-label="Editar ${esc(p.desc)}">${ico('edit')}</button><button class="ib del" data-act="del-purchase" data-id="${p.id}" aria-label="Excluir ${esc(p.desc)}">${ico('trash')}</button></div></div>`;
     }).join('')}</div>` : emptyBox('Nada para mostrar aqui', 'Troque o filtro ou cadastre um novo item.')}
   </section>`;
 }
@@ -873,6 +879,10 @@ document.addEventListener('click', e => {
     case 'add-purchase': formPurchase(); break;
     case 'edit-purchase': formPurchase(find(S.purchases)); break;
     case 'del-purchase': { const p = find(S.purchases); confirmBox(`Excluir “${p.desc}” de ${p.who}?`, () => S.purchases = S.purchases.filter(x => x.id !== id)); break; }
+    case 'up-item': case 'down-item': {
+      const its = comprasItems(), i = its.findIndex(x => x.id === id), j = a === 'up-item' ? i - 1 : i + 1;
+      if (i > -1 && j >= 0 && j < its.length) { const o = its[i].ord; its[i].ord = its[j].ord; its[j].ord = o; persist(); render(); }
+      break; }
     case 'recv': formRecv(t.dataset.who); break;
     case 'settle': { const w = t.dataset.who, s = stats(cur), v = s.aberto[w]; if (v > 0.005) { S.received.push({id: uid(), who: w, month: cur, valor: v}); persist(); render(); toast(`${w}: mês quitado.`); } break; }
     case 'del-recv': S.received = S.received.filter(x => x.id !== id); persist(); render(); break;
