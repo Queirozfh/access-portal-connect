@@ -500,6 +500,7 @@ function geral(){
         <div><div class="track"><div class="seg s-${resTone}" style="width:${w(Math.abs(s.resultado))}">${Math.abs(s.resultado) > scale * .1 ? money(Math.abs(s.resultado)) : ''}</div></div>${Math.abs(s.resultado) <= scale * .1 ? `<div class="legend"><span>${money(Math.abs(s.resultado))}</span></div>` : ''}</div></div>
     </div>
     <div class="facts">
+      <div class="fact t-sky"><div class="k">${ico('card')}Total da fatura</div><div class="v">${money(s.faturas + s.fora)}</div><div class="n">Sua parte ${money(sua)} + ${money(s.emb + s.fora)} de terceiros${s.fora > 0.005 ? ` (inclui ${esc(S.people.filter(p => !personInBill(p.name) && (s.dev[p.name] || 0) > 0.005).map(p => p.name).join(', '))})` : ''}</div></div>
       <div class="fact t-peach"><div class="k">${ico('card')}Falta pagar</div><div class="v">${money(s.aPagar)}</div><div class="n">${open.length ? open.length + ' fatura(s) em aberto' : 'Todas as faturas pagas'}</div></div>
       <div class="fact t-lav"><div class="k">${ico('users')}Falta receber</div><div class="v">${money(sum(S.people, p => Math.max(0, openUntil(p.name, cur))))}</div><div class="n">De terceiros, até ${esc(mLabel(cur))}</div></div>
       <div class="fact t-butter"><div class="k">${ico('chart')}Renda comprometida</div><div class="v">${s.pct == null ? '—' : Math.round(s.pct * 100) + '%'}</div>
