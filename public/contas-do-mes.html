@@ -55,10 +55,15 @@ button{cursor:pointer}
 /* topo */
 .top{display:flex;flex-wrap:wrap;gap:12px 20px;align-items:center;justify-content:space-between;padding:6px 2px 14px}
 .brand{display:flex;gap:12px;align-items:center}
-.brand .logo{width:44px;height:44px;border-radius:14px;background:var(--lav-bg);color:var(--lav-ink);display:grid;place-items:center}
+.brand .logo{width:44px;height:44px;border-radius:14px;background:var(--lav-bg);color:var(--lav-ink);display:grid;place-items:center;flex:0 0 auto}
+.brand .logo svg{width:24px;height:24px}
 .brand h1{font-size:22px}
 .brand p{color:var(--ink2);font-size:13px}
 .monthnav{display:flex;align-items:center;gap:6px;background:var(--panel);border:1px solid var(--line);border-radius:999px;padding:4px}
+.topnav{display:flex;align-items:center;gap:10px}
+.theme{width:44px;height:44px;border:1px solid var(--line);border-radius:50%;background:var(--panel);display:grid;place-items:center;color:var(--ink2)}
+.theme:hover{background:var(--sky-bg);color:var(--sky-ink)}
+.theme svg{width:20px;height:20px}
 .monthnav button{width:36px;height:36px;border:0;border-radius:50%;background:transparent;font-size:20px;line-height:1;color:var(--ink2)}
 .monthnav button:hover{background:var(--sky-bg);color:var(--sky-ink)}
 .monthnav select{border:0;background:transparent;font-weight:700;font-family:Fraunces,Georgia,serif;font-size:17px;padding:4px 6px;min-width:112px;text-align:center;text-align-last:center}
@@ -259,6 +264,8 @@ details.gl p{margin-top:6px;color:var(--ink2);font-size:14px}
     <symbol id="i-time" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></symbol>
     <symbol id="i-bag" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 8h14l-1 12H6z"/><path d="M9 8V6a3 3 0 0 1 6 0v2"/></symbol>
     <symbol id="i-coin" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M14.5 9.2c-.5-.8-1.4-1.2-2.5-1.2-1.4 0-2.5.7-2.5 1.8 0 2.4 5 1.2 5 3.6 0 1.1-1.1 1.8-2.5 1.8-1.1 0-2-.4-2.5-1.2M12 6.5V8m0 8v1.5"/></symbol>
+    <symbol id="i-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2.5v2M12 19.5v2M2.5 12h2M19.5 12h2M5.3 5.3l1.4 1.4M17.3 17.3l1.4 1.4M5.3 18.7l1.4-1.4M17.3 6.7l1.4-1.4"/></symbol>
+    <symbol id="i-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20.5 13.2A8.5 8.5 0 1 1 10.8 3.5a7 7 0 0 0 9.7 9.7z"/></symbol>
   </defs>
 </svg>
 
@@ -435,6 +442,9 @@ function futureParcels(m, who){
 }
 
 /* ============================ interface ============================ */
+function effTheme(){
+  return document.documentElement.dataset.theme || (window.matchMedia && matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+}
 function render(){
   const app = $('#app'); if (!app) return;
   const ml = monthsList();
@@ -442,10 +452,13 @@ function render(){
   app.innerHTML = `
   <header class="top">
     <div class="brand"><div class="logo">${ico('coin')}</div><div><h1>Contas de ${esc(S.titular)}</h1><p>Seu dinheiro do mês, em linguagem simples</p></div></div>
-    <div class="monthnav" role="group" aria-label="Escolher mês">
-      <button data-act="prev" aria-label="Mês anterior">‹</button>
-      <select id="msel" aria-label="Mês">${ml.map(m => `<option value="${m}" ${m === cur ? 'selected' : ''}>${esc(mLabel(m))}</option>`).join('')}</select>
-      <button data-act="next" aria-label="Próximo mês">›</button>
+    <div class="topnav">
+      <div class="monthnav" role="group" aria-label="Escolher mês">
+        <button data-act="prev" aria-label="Mês anterior">‹</button>
+        <select id="msel" aria-label="Mês">${ml.map(m => `<option value="${m}" ${m === cur ? 'selected' : ''}>${esc(mLabel(m))}</option>`).join('')}</select>
+        <button data-act="next" aria-label="Próximo mês">›</button>
+      </div>
+      <button class="theme" data-act="theme" aria-label="Alternar entre tema claro e escuro" title="Alternar tema claro/escuro">${ico(effTheme() === 'dark' ? 'sun' : 'moon')}</button>
     </div>
     <div class="save" id="savestat"></div>
   </header>
@@ -866,6 +879,12 @@ document.addEventListener('click', e => {
   switch (a) {
     case 'prev': { const i = ml.indexOf(cur); if (i > 0) { cur = ml[i - 1]; render(); } break; }
     case 'next': { const i = ml.indexOf(cur); if (i < ml.length - 1) { cur = ml[i + 1]; render(); } break; }
+    case 'theme': {
+      const next = effTheme() === 'dark' ? 'light' : 'dark';
+      document.documentElement.dataset.theme = next;
+      try { localStorage.setItem('cdm-tema', next); } catch (e) {}
+      render();
+      break; }
     case 'close': closeModal(); break;
     case 'add-income': formIncome(); break;
     case 'edit-income': formIncome(find(S.incomes)); break;
@@ -936,6 +955,7 @@ document.addEventListener('keydown', e => {
   if ((e.key === 'Enter' || e.key === ' ') && e.target.closest && e.target.closest('g[data-month]')) { e.preventDefault(); cur = e.target.closest('g[data-month]').dataset.month; render(); }
 });
 
+try { const t = localStorage.getItem('cdm-tema'); if (t === 'light' || t === 'dark') document.documentElement.dataset.theme = t; } catch (e) {}
 initStore();
 </script>
 </body>
