@@ -60,6 +60,10 @@ button{cursor:pointer}
 .brand h1{font-size:22px}
 .brand p{color:var(--ink2);font-size:13px}
 .monthnav{display:flex;align-items:center;gap:6px;background:var(--panel);border:1px solid var(--line);border-radius:999px;padding:4px}
+.topnav{display:flex;align-items:center;gap:10px}
+.theme{width:44px;height:44px;border:1px solid var(--line);border-radius:50%;background:var(--panel);display:grid;place-items:center;color:var(--ink2)}
+.theme:hover{background:var(--sky-bg);color:var(--sky-ink)}
+.theme svg{width:20px;height:20px}
 .monthnav button{width:36px;height:36px;border:0;border-radius:50%;background:transparent;font-size:20px;line-height:1;color:var(--ink2)}
 .monthnav button:hover{background:var(--sky-bg);color:var(--sky-ink)}
 .monthnav select{border:0;background:transparent;font-weight:700;font-family:Fraunces,Georgia,serif;font-size:17px;padding:4px 6px;min-width:112px;text-align:center;text-align-last:center}
@@ -445,10 +449,13 @@ function render(){
   app.innerHTML = `
   <header class="top">
     <div class="brand"><div class="logo">${ico('coin')}</div><div><h1>Contas de ${esc(S.titular)}</h1><p>Seu dinheiro do mês, em linguagem simples</p></div></div>
-    <div class="monthnav" role="group" aria-label="Escolher mês">
-      <button data-act="prev" aria-label="Mês anterior">‹</button>
-      <select id="msel" aria-label="Mês">${ml.map(m => `<option value="${m}" ${m === cur ? 'selected' : ''}>${esc(mLabel(m))}</option>`).join('')}</select>
-      <button data-act="next" aria-label="Próximo mês">›</button>
+    <div class="topnav">
+      <div class="monthnav" role="group" aria-label="Escolher mês">
+        <button data-act="prev" aria-label="Mês anterior">‹</button>
+        <select id="msel" aria-label="Mês">${ml.map(m => `<option value="${m}" ${m === cur ? 'selected' : ''}>${esc(mLabel(m))}</option>`).join('')}</select>
+        <button data-act="next" aria-label="Próximo mês">›</button>
+      </div>
+      <button class="theme" data-act="theme" aria-label="Alternar entre tema claro e escuro" title="Alternar tema claro/escuro">${ico(effTheme() === 'dark' ? 'sun' : 'moon')}</button>
     </div>
     <div class="save" id="savestat"></div>
   </header>
