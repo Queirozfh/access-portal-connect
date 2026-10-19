@@ -8,3 +8,5 @@
 > Commits you push to the connected branch sync back to Lovable and show up in
 > the editor, so keep the branch in a working state.
 <!-- LOVABLE:END -->
+
+- Keep month deletion reversible in the standalone financial HTML by retaining all records and tracking excluded months in state; revalidate settlement at confirmation so unpaid months cannot be excluded.
