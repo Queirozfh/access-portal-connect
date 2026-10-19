@@ -821,9 +821,9 @@ function openForm(cfg){
     closeModal(); cfg.onSave(v); persist(); render();
   };
 }
-function confirmBox(text, onYes, cta='Excluir'){
+function confirmBox(text, onYes, cta='Excluir', note='Essa ação não pode ser desfeita.'){
   const m = $('#modal');
-  m.innerHTML = `<div class="sheet" role="alertdialog" aria-modal="true" aria-labelledby="mt"><h3 id="mt">${esc(text)}</h3><p class="note">Essa ação não pode ser desfeita.</p>
+  m.innerHTML = `<div class="sheet" role="alertdialog" aria-modal="true" aria-labelledby="mt"><h3 id="mt">${esc(text)}</h3><p class="note">${esc(note)}</p>
     <div class="btns"><button class="btn ghost" data-act="close">Cancelar</button><button class="btn primary" id="yes">${esc(cta)}</button></div></div>`;
   m.hidden = false; $('#yes').focus();
   $('#yes').onclick = () => { closeModal(); onYes(); persist(); render(); };
@@ -934,7 +934,7 @@ document.addEventListener('click', e => {
       const month = cur;
       confirmBox(`Excluir ${mLong(month)}? Os dados serão preservados e o mês poderá ser restaurado em Ajustes.`, () => {
         if (!excluirMes(month)) toast('Exclusão bloqueada: o mês precisa estar completamente quitado e não pode ser o último.');
-      }); break; }
+      }, 'Excluir', 'Você poderá restaurar este mês com todos os dados em Ajustes.'); break; }
     case 'restore-month': if (restaurarMes(t.dataset.m)) { persist(); render(); toast('Mês restaurado com todos os dados.'); } break;
     case 'add-cat': openForm({title:'Nova categoria', fields:[{name:'name', label:'Nome', type:'text'}], validate: v => !v.name ? 'Escreva o nome.' : S.cats.includes(v.name) ? 'Essa categoria já existe.' : '', onSave: v => S.cats.push(v.name)}); break;
     case 'exp-csv': saveFile('controle-financeiro.csv', csv(), 'Resumo exportado.'); break;
