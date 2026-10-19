@@ -392,13 +392,28 @@ async function initStore(){
     dbDoc = { set: async (o) => { const w = await fetch(API+'?on_conflict=id',{method:'POST',headers:{...H,Prefer:'resolution=merge-duplicates'},body:JSON.stringify({id:'main',json:o.json,updated_at:new Date().toISOString()})}); if(!w.ok) throw 0; } };
     if (!rows.length) persist();
   } catch (e) { dbDoc = null; }
-  if (!monthsList().includes(cur)) cur = S.start;
+  if (!monthsList().includes(cur)) cur = monthsList()[0];
   render();
 }
 
 /* ============================ cálculos ============================ */
 const monthsList = () => { const l = Array.from({length: S.count || 12}, (_, i) => ymAdd(S.start, i)).filter(m => !(S.hidden || []).includes(m)); return l.length ? l : [S.start]; };
 function monthQuitado(m){ const s = stats(m); return s.bills.every(b => b.paid) && Object.values(s.aberto).every(v => v <= 0.005); }
+function excluirMes(m){
+  if (!monthsList().includes(m) || monthsList().length <= 1 || !monthQuitado(m)) return false;
+  S.hidden.push(m);
+  cur = monthsList()[0];
+  return true;
+}
+function restaurarMes(m){
+  if (!S.hidden.includes(m)) return false;
+  const end = ymAdd(S.start, S.count - 1);
+  if (ymDiff(m, S.start) < 0) { S.start = m; S.count = ymDiff(end, m) + 1; }
+  else if (ymDiff(m, end) > 0) S.count = ymDiff(m, S.start) + 1;
+  S.hidden = S.hidden.filter(x => x !== m);
+  cur = m;
+  return true;
+}
 const planOn = (p, m) => { const d = ymDiff(m, p.start); return d >= 0 && (p.n == null || d < p.n); };
 const planAmt = (p, m) => planOn(p, m) ? p.valor : 0;
 const planIdx = (p, m) => ymDiff(m, p.start) + 1;
@@ -741,14 +756,16 @@ function vTempo(){
 
 /* ------------- ajustes ------------- */
 function vAjustes(){
+  const quitado = monthQuitado(cur), ultimo = monthsList().length <= 1;
   return `<section class="panel">
     ${head('butter','gear','Ajustes','Nome, período, alertas, pessoas e categorias.')}
     <div class="settings">
       <div><div class="field"><label for="s-tit">Seu nome (titular)</label><input id="s-tit" type="text" value="${esc(S.titular)}" data-set="titular"></div>
         <div class="field"><label for="s-start">Primeiro mês do controle</label><input id="s-start" type="month" value="${esc(S.start)}" data-set="start"><small>A tela mostra ${S.count} meses a partir deste (até ${esc(ymAdd(S.start, S.count - 1))}).</small></div>
         <div class="pills" style="margin-bottom:10px"><button class="btn" data-act="add-months">${ico('plus')}Acrescentar meses</button>
-          <button class="btn" data-act="del-month">${ico('trash')}Excluir mês atual (${esc(cur)})</button></div>
-        ${S.hidden.length ? `<p class="note">Meses excluídos: ${S.hidden.map(m => `<button class="btn ghost" style="padding:2px 8px" data-act="restore-month" data-m="${m}">${esc(m)} ↺</button>`).join(' ')}</p>` : ''}
+          <button class="btn" data-act="del-month" ${!quitado || ultimo ? 'disabled' : ''}>${ico('trash')}Excluir mês atual (${esc(mLabel(cur))})</button></div>
+        <p class="note" role="status">${!quitado ? 'Exclusão bloqueada: há faturas não pagas ou valores a receber em aberto.' : ultimo ? 'É necessário manter pelo menos um mês no controle.' : 'Mês completamente quitado. Pode ser excluído e restaurado depois.'}</p>
+        ${S.hidden.length ? `<div style="margin:12px 0"><h3 style="font-size:16px;margin-bottom:6px">Restaurar meses excluídos</h3>${[...S.hidden].sort().map(m => `<div class="mini"><span class="grow">${esc(mLong(m))}</span><button class="btn ghost" data-act="restore-month" data-m="${esc(m)}" aria-label="Restaurar ${esc(mLong(m))}">↺ Restaurar</button></div>`).join('')}</div>` : ''}
         <div class="two"><div class="field"><label for="s-y">Alerta amarelo (%)</label><input id="s-y" inputmode="numeric" value="${Math.round(S.yellow * 100)}" data-set="yellow"></div>
         <div class="field"><label for="s-r">Alerta vermelho (%)</label><input id="s-r" inputmode="numeric" value="${Math.round(S.red * 100)}" data-set="red"></div></div>
         <p class="note">Os alertas avisam quando a sua parte passa dessa fatia da renda.</p></div>
@@ -914,8 +931,11 @@ document.addEventListener('click', e => {
     case 'del-month': {
       if (!monthQuitado(cur)) { toast('Só dá para excluir um mês com todas as faturas pagas e nada a receber.'); break; }
       if (ml.length <= 1) { toast('Precisa ficar pelo menos um mês.'); break; }
-      confirmBox(`Excluir o mês ${cur} da tela? Ele está quitado.`, () => { S.hidden.push(cur); cur = monthsList()[0]; }); break; }
-    case 'restore-month': S.hidden = S.hidden.filter(m => m !== t.dataset.m); persist(); render(); toast('Mês restaurado.'); break;
+      const month = cur;
+      confirmBox(`Excluir ${mLong(month)}? Os dados serão preservados e o mês poderá ser restaurado em Ajustes.`, () => {
+        if (!excluirMes(month)) toast('Exclusão bloqueada: o mês precisa estar completamente quitado e não pode ser o último.');
+      }); break; }
+    case 'restore-month': if (restaurarMes(t.dataset.m)) { persist(); render(); toast('Mês restaurado com todos os dados.'); } break;
     case 'add-cat': openForm({title:'Nova categoria', fields:[{name:'name', label:'Nome', type:'text'}], validate: v => !v.name ? 'Escreva o nome.' : S.cats.includes(v.name) ? 'Essa categoria já existe.' : '', onSave: v => S.cats.push(v.name)}); break;
     case 'exp-csv': saveFile('controle-financeiro.csv', csv(), 'Resumo exportado.'); break;
     case 'exp-json': saveFile('controle-financeiro-copia.json', JSON.stringify(S, null, 1), 'Cópia salva.'); break;
