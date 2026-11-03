@@ -392,9 +392,10 @@ async function initStore(){
     dbDoc = { set: async (o) => { const w = await fetch(API+'?on_conflict=id',{method:'POST',headers:{...H,Prefer:'resolution=merge-duplicates'},body:JSON.stringify({id:'main',json:o.json,updated_at:new Date().toISOString()})}); if(!w.ok) throw 0; } };
     if (!rows.length) persist();
   } catch (e) { dbDoc = null; }
-  if (!monthsList().includes(cur)) cur = monthsList()[0];
+  cur = mesInicial();
   render();
 }
+function mesInicial(){ const ml = monthsList(), d = new Date(), hoje = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0'); return ml.find(m => m >= hoje) || ml[ml.length - 1]; }
 
 /* ============================ cálculos ============================ */
 const monthsList = () => { const l = Array.from({length: S.count || 12}, (_, i) => ymAdd(S.start, i)).filter(m => !(S.hidden || []).includes(m)); return l.length ? l : [S.start]; };
@@ -402,7 +403,8 @@ function monthQuitado(m){ const s = stats(m); return s.bills.every(b => b.paid) 
 function excluirMes(m){
   if (!monthsList().includes(m) || monthsList().length <= 1 || !monthQuitado(m)) return false;
   S.hidden.push(m);
-  cur = monthsList()[0];
+  S.count += 1;
+  const ml = monthsList(); cur = ml.find(x => x > m) || ml[ml.length - 1];
   return true;
 }
 function restaurarMes(m){
