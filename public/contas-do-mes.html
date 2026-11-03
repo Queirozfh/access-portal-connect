@@ -462,7 +462,7 @@ function receberResumo(m = cur){
   const res = {};
   S.people.forEach(p => {
     const prev = s.dev[p.name] || 0, rec = s.rec[p.name] || 0;
-    res[p.name] = {prev: r2(prev), rec: r2(rec), aberto: Math.max(0, r2(prev - rec))};
+    res[p.name] = {prev, rec, aberto: Math.max(0, r2(prev - rec))};
   });
   const tot = ['prev', 'rec', 'aberto'].map(k => r2(sum(Object.values(res), x => x[k])));
   return {res, tot, month: m};
