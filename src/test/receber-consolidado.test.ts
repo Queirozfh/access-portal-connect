@@ -24,9 +24,9 @@ describe('Consolidado a receber', () => {
     const r = run("const r = receberResumo(); JSON.stringify(r.res.Maria.aberto)", compra(), `{id:'r',who:'Maria',month:'2026-12',valor:300}`);
     expect(JSON.parse(r)).toBe(0);
   });
-  it('não cobra parcelas anteriores ao início do período', () => {
+  it('desconta as parcelas anteriores ao início do período', () => {
     const r = run("const r = receberResumo(); JSON.stringify(r.res.Maria.prev)", compra(`,start:'2026-08'`));
-    expect(JSON.parse(r)).toBe(300);
+    expect(JSON.parse(r)).toBe(100);
   });
   it('assinaturas recorrentes contam até o fim do período', () => {
     const r = run("const r = receberResumo(); JSON.stringify(r.res.Maria.prev)", `{id:'p',desc:'Assinatura',cat:'Outros',who:'Maria',valor:50,start:'2026-10',n:null}`);
