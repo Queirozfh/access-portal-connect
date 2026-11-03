@@ -10,3 +10,4 @@
 <!-- LOVABLE:END -->
 
 - Keep month deletion reversible in the standalone financial HTML by retaining all records and tracking excluded months in state; revalidate settlement at confirmation so unpaid months cannot be excluded.
+- Derive receivables summaries from the shared monthly stats helper so the summary and person cards use the same purchase and payment attribution.
