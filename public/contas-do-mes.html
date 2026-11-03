@@ -457,30 +457,15 @@ function futureParcels(m, who){
   return sum(S.purchases.filter(p => p.n != null && (!who || p.who === who)), p => {
     const idx = planIdx(p, m); return Math.max(0, p.n - Math.max(0, idx)) * p.valor; });
 }
-function receberResumo(){
-  const ml = monthsList(), first = S.start, lastRaw = ymAdd(S.start, (S.count || 12) - 1);
+function receberResumo(m = cur){
+  const s = stats(m);
   const res = {};
-  S.people.forEach(p => res[p.name] = {prev: 0, rec: 0, venc: 0, aberto: 0});
-  S.purchases.forEach(p => {
-    if (isTit(p.who) || !res[p.who]) return;
-    if (p.n == null) {
-      let m = ymDiff(p.start, first) > 0 ? p.start : first, c = 0;
-      while (ymDiff(m, lastRaw) <= 0) { if (planOn(p, m)) c++; m = ymAdd(m, 1); }
-      res[p.who].prev += c * p.valor;
-    } else {
-      const before = Math.max(0, planIdx(p, first) - 1);
-      res[p.who].prev += Math.max(0, p.n - before) * p.valor;
-    }
+  S.people.forEach(p => {
+    const prev = s.dev[p.name] || 0, rec = s.rec[p.name] || 0;
+    res[p.name] = {prev, rec, aberto: Math.max(0, r2(prev - rec))};
   });
-  S.received.forEach(r => { if (res[r.who]) res[r.who].rec += r.valor; });
-  ml.forEach(m => { if (m > cur) return; const s = stats(m); Object.keys(res).forEach(n => { res[n].venc += Math.max(0, s.aberto[n] || 0); }); });
-  Object.keys(res).forEach(n => {
-    const r = res[n];
-    r.aberto = Math.max(0, r2(r.prev - r.rec));
-    r.venc = Math.min(r.aberto, r2(r.venc));
-  });
-  const tot = ['prev', 'rec', 'aberto', 'venc'].map(k => r2(sum(Object.values(res), x => x[k])));
-  return {res, tot, lastRaw};
+  const tot = ['prev', 'rec', 'aberto'].map(k => r2(sum(Object.values(res), x => x[k])));
+  return {res, tot, month: m};
 }
 
 
@@ -744,30 +729,27 @@ function vReceber(){
     <p class="note" style="margin:8px 0 0">As compras do titular não entram em cobrança: já são a sua própria parte.</p>
   </article>`;
   const cards = [titCard, ...S.people.map(p => {
-    const n = p.name, c = pcol(n), dev = s.dev[n] || 0, rec = s.rec[n] || 0, ab = s.aberto[n] || 0, acc = openUntil(n, cur);
+    const n = p.name, c = pcol(n), dev = s.dev[n] || 0, rec = s.rec[n] || 0, ab = Math.max(0, s.aberto[n] || 0);
     const its = S.purchases.filter(x => x.who === n && planOn(x, cur));
     const rs = S.received.filter(r => r.who === n && r.month === cur);
     return `<article class="pcard">
-      <header><div><h3>${esc(n)}</h3><div style="margin-top:4px">${p.inBill ? chip('sky', 'Dentro da sua fatura') : chip('butter', 'Paga por conta própria')}</div></div>${acc > 0.005 ? chip('rose', 'Deve ' + money(acc), 'alert') : chip('mint', 'Em dia', 'check')}</header>
+      <header><div><h3>${esc(n)}</h3><div style="margin-top:4px">${p.inBill ? chip('sky', 'Dentro da sua fatura') : chip('butter', 'Paga por conta própria')}</div></div>${ab > 0.005 ? chip('rose', 'Deve ' + money(ab), 'alert') : chip('mint', 'Em dia', 'check')}</header>
       <div class="nums"><div class="t-peach"><small>Devido</small><b>${money(dev)}</b></div><div class="t-mint"><small>Recebido</small><b>${money(rec)}</b></div><div class="t-${ab > 0.005 ? 'rose' : 'sky'}"><small>Em aberto</small><b>${money(ab)}</b></div></div>
       ${its.length ? `<ul aria-label="Itens de ${esc(n)}">${its.map(x => `<li><span>${esc(x.desc)} ${x.n != null ? `<small>(${planIdx(x, cur)}/${x.n})</small>` : ''}</span><span>${money(x.valor)}</span></li>`).join('')}</ul>` : `<p class="note" style="margin:8px 0">Sem itens neste mês.</p>`}
       ${rs.length ? `<ul>${rs.map(r => `<li><span>${ico('check', '')}Recebido ${money(r.valor)}</span><button class="ib del" style="width:28px;height:28px" data-act="del-recv" data-id="${r.id}" aria-label="Desfazer recebimento">${ico('trash')}</button></li>`).join('')}</ul>` : ''}
       <div class="pills" style="margin-top:10px"><button class="btn" data-act="recv" data-who="${esc(n)}">${ico('plus')}Registrar recebimento</button>${ab > 0.005 ? `<button class="btn" data-act="settle" data-who="${esc(n)}">${ico('check')}Quitar o mês</button>` : ''}</div>
     </article>`;
   })];
-  const R = receberResumo();
-  const fut = r2(R.tot[2] - R.tot[3]);
+  const R = receberResumo(cur);
   const consolidado = `<section class="panel">
-    ${head('mint','coin','Consolidado a receber','Tudo o que as pessoas devem, o que já foi pago (mesmo em parte) e o que ainda falta receber.')}
+    ${head('mint','coin','Consolidado a receber',esc(mLong(cur)))}
     <div class="facts">
-      <div class="fact t-sky"><div class="k">${ico('chart')}Total previsto</div><div class="v">${money(R.tot[0])}</div><div class="n">Compras e assinaturas de terceiros, do início até ${esc(mLabel(R.lastRaw))}</div></div>
-      <div class="fact t-mint"><div class="k">${ico('check')}Já recebido</div><div class="v">${money(R.tot[1])}</div><div class="n">Todos os recebimentos registrados, totais ou parciais</div></div>
+      <div class="fact t-sky"><div class="k">${ico('chart')}Total previsto</div><div class="v">${money(R.tot[0])}</div><div class="n">Compras e assinaturas de terceiros em ${esc(mLabel(cur))}</div></div>
+      <div class="fact t-mint"><div class="k">${ico('check')}Já recebido</div><div class="v">${money(R.tot[1])}</div><div class="n">Pagamentos totais ou parciais de ${esc(mLabel(cur))}</div></div>
       <div class="fact t-lav"><div class="k">${ico('coin')}Ainda a receber</div><div class="v">${money(R.tot[2])}</div><div class="n">Consolidado final: previsto − recebido</div></div>
     </div>
-    ${R.tot[2] > 0.005 ? `<div class="legend" style="margin-top:10px"><span><i style="background:var(--rose)"></i>Já venceu (até ${esc(mLabel(cur))}): ${money(R.tot[3])}</span><span><i style="background:var(--lav)"></i>Vem nos meses futuros: ${money(fut)}</span></div>` : ''}
     <div class="scroll" style="margin-top:12px"><table><thead><tr><th scope="col">Pessoa</th><th scope="col">Previsto</th><th scope="col">Recebido</th><th scope="col">A receber</th></tr></thead>
       <tbody>${S.people.map(p => { const r = R.res[p.name]; return `<tr><td><strong>${esc(p.name)}</strong></td><td>${money(r.prev)}</td><td>${money(r.rec)}</td><td>${money(r.aberto)}</td></tr>`; }).join('')}</tbody></table></div>
-    <p class="note" style="margin-top:10px">Parcelas contam até a última parcela de cada compra; assinaturas contam até o fim do período atual. A sua parte não entra: não é dinheiro a receber.</p>
   </section>`;
   return `${consolidado}<section class="panel">
     ${head('lav','users','Quem te deve','Compras de todo mundo — o titular e cada pessoa. Registre o que já foi pago.')}
