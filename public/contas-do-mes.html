@@ -256,7 +256,7 @@ html.mobile .top{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px;
 html.mobile .brand{min-width:0}
 html.mobile .brand h1{font-size:18px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 html.mobile .brand p{display:none}
-html.mobile .topnav{grid-column:1 / -1;order:3;display:grid;grid-template-columns:minmax(0,1fr) 44px;gap:8px}
+html.mobile .topnav{grid-column:1 / -1;order:3;display:grid;grid-template-columns:minmax(0,1fr) auto auto;gap:8px}
 html.mobile .monthnav{justify-content:space-between}
 html.mobile .monthnav button{width:44px;height:44px;font-size:24px}
 html.mobile .monthnav select{flex:1;min-width:0;font-size:16px}
@@ -992,6 +992,7 @@ document.addEventListener('click', e => {
   switch (a) {
     case 'prev': { const i = ml.indexOf(cur); if (i > 0) { cur = ml[i - 1]; render(); } break; }
     case 'next': { const i = ml.indexOf(cur); if (i < ml.length - 1) { cur = ml[i + 1]; render(); } break; }
+    case 'sair': { sair(); return; }
     case 'theme': {
       const next = effTheme() === 'dark' ? 'light' : 'dark';
       document.documentElement.dataset.theme = next;
