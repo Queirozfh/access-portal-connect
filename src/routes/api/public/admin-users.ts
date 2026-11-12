@@ -55,7 +55,7 @@ export const Route = createFileRoute("/api/public/admin-users")({
             const { data: rows } = await supabaseAdmin.from("app_state").select("id, json");
             const names: Record<string, string> = {};
             for (const r of rows || []) { try { names[r.id] = JSON.parse(r.json).titular || ""; } catch { /* ignore */ } }
-            return json({ users: data.users.map((u) => ({ id: u.id, name: names[u.id] || "", email: u.email, created_at: u.created_at, last_sign_in_at: u.last_sign_in_at, admin: u.id === adminId })) });
+            return json({ users: data.users.map((u) => ({ id: u.id, name: names[u.id] || "", email: u.email, created_at: u.created_at, last_sign_in_at: u.last_sign_in_at, suspended: !!(u as { banned_until?: string }).banned_until && new Date((u as { banned_until?: string }).banned_until!).getTime() > Date.now(), admin: u.id === adminId })) });
           }
           case "create": {
             if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || email.length > 255) return json({ error: "E-mail inválido." }, 400);
@@ -83,6 +83,13 @@ export const Route = createFileRoute("/api/public/admin-users")({
             if (!id || id === adminId) return json({ error: "Não é possível apagar os dados do administrador por aqui." }, 400);
             const st = await readState(id);
             const { error } = await writeState(id, blank(st?.titular || "Eu"));
+            if (error) return json({ error: error.message }, 400);
+            return json({ ok: true });
+          }
+          case "suspend":
+          case "unsuspend": {
+            if (!id || id === adminId) return json({ error: "Não é possível suspender o administrador." }, 400);
+            const { error } = await a.updateUserById(id, { ban_duration: body.action === "suspend" ? "876000h" : "none" });
             if (error) return json({ error: error.message }, 400);
             return json({ ok: true });
           }
