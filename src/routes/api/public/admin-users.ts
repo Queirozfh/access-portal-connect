@@ -52,10 +52,24 @@ export const Route = createFileRoute("/api/public/admin-users")({
           case "list": {
             const { data, error } = await a.listUsers({ perPage: 1000 });
             if (error) return json({ error: error.message }, 500);
-            const { data: rows } = await supabaseAdmin.from("app_state").select("id, json");
+            const { data: rows } = await supabaseAdmin.from("app_state").select("id, json, updated_at");
             const names: Record<string, string> = {};
-            for (const r of rows || []) { try { names[r.id] = JSON.parse(r.json).titular || ""; } catch { /* ignore */ } }
-            return json({ users: data.users.map((u) => ({ id: u.id, name: names[u.id] || "", email: u.email, created_at: u.created_at, last_sign_in_at: u.last_sign_in_at, suspended: !!(u as { banned_until?: string }).banned_until && new Date((u as { banned_until?: string }).banned_until!).getTime() > Date.now(), admin: u.id === adminId })) });
+            const stats: Record<string, { total: number; ativos: number; updated_at: string }> = {};
+            const now = new Date(), ym = now.getFullYear() * 12 + now.getMonth();
+            const toN = (m: string) => { const [y, mo] = String(m || "").split("-").map(Number); return y * 12 + (mo - 1); };
+            for (const r of rows || []) {
+              try {
+                const st = JSON.parse(r.json);
+                names[r.id] = st.titular || "";
+                const ps: { start?: string; n?: number | null }[] = Array.isArray(st.purchases) ? st.purchases : [];
+                const inc: { start?: string; n?: number | null }[] = Array.isArray(st.incomes) ? st.incomes : [];
+                const on = (p: { start?: string; n?: number | null }) => { const i = ym - toN(p.start || ""); return i >= 0 && (p.n == null || i < p.n); };
+                const total = ps.length + inc.length + (st.bills?.length || 0) + (st.received?.length || 0);
+                stats[r.id] = { total, ativos: ps.filter(on).length + inc.filter(on).length, updated_at: r.updated_at };
+              } catch { /* ignore */ }
+            }
+            const key = (id: string) => (id === adminId ? (stats[id] ? id : "main") : id);
+            return json({ users: data.users.map((u) => ({ id: u.id, name: names[u.id] || names[key(u.id)] || "", stats: stats[u.id] || stats[key(u.id)] || null, email: u.email, created_at: u.created_at, last_sign_in_at: u.last_sign_in_at, suspended: !!(u as { banned_until?: string }).banned_until && new Date((u as { banned_until?: string }).banned_until!).getTime() > Date.now(), admin: u.id === adminId })) });
           }
           case "create": {
             if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || email.length > 255) return json({ error: "E-mail inválido." }, 400);

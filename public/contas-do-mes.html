@@ -960,7 +960,7 @@ function vAdmin(){
     ${head('lav','users','Admin','Dê acesso a outras pessoas. Cada e-mail tem o próprio sistema, vazio e separado do seu.')}
     <div class="pills" style="margin-bottom:12px"><button class="btn primary" data-act="adm-add">${ico('plus')}Conceder acesso</button></div>
     ${adminMsg ? `<p class="note" style="margin-bottom:10px">${esc(adminMsg)}</p>` : ''}
-    ${adminUsers === 'carregando' ? '<p class="note">Carregando acessos…</p>' : lista.map(u => `<div class="mini"><span class="grow"><strong>${esc(u.name ? u.name + ' — ' : '')}${esc(u.email || '')}</strong>${u.admin ? ' (você, administrador)' : ''}${u.suspended ? ' <span class="chip t-rose">Suspenso</span>' : ''}<br><small>Criado em ${esc(new Date(u.created_at).toLocaleDateString('pt-BR'))}${u.last_sign_in_at ? ' · último acesso ' + esc(new Date(u.last_sign_in_at).toLocaleDateString('pt-BR')) : ' · ainda não entrou'}</small></span>
+    ${adminUsers === 'carregando' ? '<p class="note">Carregando acessos…</p>' : lista.map(u => `<div class="mini"><span class="grow"><strong>${esc(u.name ? u.name + ' — ' : '')}${esc(u.email || '')}</strong>${u.admin ? ' (você, administrador)' : ''}${u.suspended ? ' <span class="chip t-rose">Suspenso</span>' : ''}<br><small>Criado em ${esc(new Date(u.created_at).toLocaleDateString('pt-BR'))}${u.last_sign_in_at ? ' · último acesso ' + esc(new Date(u.last_sign_in_at).toLocaleString('pt-BR', {dateStyle:'short', timeStyle:'short'})) : ' · ainda não entrou'}</small><br><small>${u.stats ? `${u.stats.ativos} lançamento(s) ativo(s) neste mês · ${u.stats.total} no total · última alteração ${esc(new Date(u.stats.updated_at).toLocaleString('pt-BR', {dateStyle:'short', timeStyle:'short'}))}` : 'Nenhum lançamento ainda'}</small></span>
       ${u.admin ? '' : `<button class="btn ghost" data-act="adm-name" data-id="${esc(u.id)}" data-email="${esc(u.email || '')}" data-name="${esc(u.name || '')}">Nome</button><button class="btn ghost" data-act="adm-wipe" data-id="${esc(u.id)}" data-email="${esc(u.email || '')}">Apagar dados</button><button class="btn ghost" data-act="${u.suspended ? 'adm-unsus' : 'adm-sus'}" data-id="${esc(u.id)}" data-email="${esc(u.email || '')}">${u.suspended ? 'Liberar acesso' : 'Suspender'}</button><button class="btn ghost" data-act="adm-pass" data-id="${esc(u.id)}" data-email="${esc(u.email || '')}">Nova senha</button><button class="ib del" data-act="adm-del" data-id="${esc(u.id)}" data-email="${esc(u.email || '')}" aria-label="Remover acesso de ${esc(u.email || '')}">${ico('trash')}</button>`}</div>`).join('')}
   </section>`;
 }
@@ -993,6 +993,10 @@ function vAjustes(){
         ${S.cats.map((c, i) => `<div class="mini"><span class="dot" style="width:10px;height:10px;border-radius:3px;background:var(--${ccol(c)})"></span><div class="grow"><input type="text" value="${esc(c)}" data-cname="${i}" aria-label="Nome da categoria"></div></div>`).join('')}
         <button class="btn" style="margin-top:10px" data-act="add-cat">${ico('plus')}Adicionar categoria</button></div>
     </div>
+  </section>
+  <section class="panel">
+    ${head('rose','gear','Sua senha','Troque a senha de acesso sem precisar do administrador.')}
+    <button class="btn" data-act="my-pass">${ico('edit')}Alterar minha senha</button>
   </section>
   <section class="panel">
     ${head('sky','down','Seus dados','Exporte, guarde uma cópia ou recomece.')}
@@ -1160,6 +1164,9 @@ document.addEventListener('click', e => {
       validate: v => !v.name ? 'Escreva o nome.' : '', onSave: v => { admRun({action:'rename', id:uidU, name:v.name}, 'Nome salvo.'); }}); return; }
     case 'adm-wipe': { const uidU = t.dataset.id, em = t.dataset.email; confirmBox(`Apagar todos os dados de ${em}?`, () => { admRun({action:'wipe', id:uidU}, 'Dados apagados. O perfil ficou em branco.'); }, 'Apagar dados', 'Receitas, faturas, compras, pessoas e recebimentos dessa pessoa serão apagados. O nome e o acesso continuam.'); return; }
     case 'adm-sus': { const uidU = t.dataset.id, em = t.dataset.email; confirmBox(`Suspender o acesso de ${em}?`, () => { admRun({action:'suspend', id:uidU}, 'Acesso suspenso.'); }, 'Suspender', 'A pessoa verá a tela de acesso suspenso. Os dados dela ficam guardados e você pode liberar quando quiser.'); return; }
+    case 'my-pass': openForm({title:'Alterar minha senha', fields:[{name:'p1', label:'Nova senha', type:'text'},{name:'p2', label:'Repita a nova senha', type:'text'}], cta:'Salvar senha',
+      validate: v => String(v.p1 || '').length < 6 ? 'A senha precisa ter pelo menos 6 caracteres.' : v.p1 !== v.p2 ? 'As senhas não conferem.' : '',
+      onSave: v => { (async () => { try { const r = await fetch(CB + '/auth/v1/user', {method:'PUT', headers:{...(await hdr()), 'Content-Type':'application/json'}, body:JSON.stringify({password:v.p1})}); const d = await r.json().catch(() => ({})); if (!r.ok) throw new Error(/weak|pwned|leak/i.test(JSON.stringify(d)) ? 'Senha fraca ou já vazada na internet. Escolha outra.' : /same|different/i.test(JSON.stringify(d)) ? 'A nova senha precisa ser diferente da atual.' : (d.msg || d.error_description || 'Não foi possível alterar a senha.')); toast('Senha alterada.'); } catch (e) { toast(e.message); } })(); }}); return;
     case 'adm-unsus': admRun({action:'unsuspend', id:t.dataset.id}, 'Acesso liberado.'); return;
     case 'adm-del': { const uidU = t.dataset.id, em = t.dataset.email; confirmBox(`Remover o acesso de ${em}? Os dados dessa pessoa também serão apagados.`, () => { admRun({action:'delete', id:uidU}, 'Acesso removido.'); }, 'Remover'); return; }
     case 'theme': {
