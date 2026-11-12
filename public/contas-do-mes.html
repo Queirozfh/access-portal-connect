@@ -481,7 +481,7 @@ async function initStore(){
     if (!rows.length) persist();
   } catch (e) {
     if (e && e.message === 'auth' || e && e.message === 'sem sessão') { sess = null; localStorage.removeItem(SESS); return telaLogin('Sua sessão expirou. Entre novamente.'); }
-    dbDoc = null; const local = loadLocal(); if (local) S = local;
+    dbDoc = null; if (meuId && meuId !== GIO_ID) { const local = loadLocal(); S = local || seedVazio(); } else { const local = loadLocal(); if (local) S = local; }
   }
   cur = mesInicial();
   render();
@@ -882,8 +882,8 @@ function vAdmin(){
     ${head('lav','users','Painel do admin','Dê acesso a outras pessoas. Cada e-mail tem o próprio sistema, vazio e separado do seu.')}
     <div class="pills" style="margin-bottom:12px"><button class="btn primary" data-act="adm-add">${ico('plus')}Conceder acesso</button></div>
     ${adminMsg ? `<p class="note" style="margin-bottom:10px">${esc(adminMsg)}</p>` : ''}
-    ${adminUsers === 'carregando' ? '<p class="note">Carregando acessos…</p>' : lista.map(u => `<div class="mini"><span class="grow"><strong>${esc(u.email || '')}</strong>${u.admin ? ' (você, administrador)' : ''}<br><small>Criado em ${esc(new Date(u.created_at).toLocaleDateString('pt-BR'))}${u.last_sign_in_at ? ' · último acesso ' + esc(new Date(u.last_sign_in_at).toLocaleDateString('pt-BR')) : ' · ainda não entrou'}</small></span>
-      ${u.admin ? '' : `<button class="btn ghost" data-act="adm-pass" data-id="${esc(u.id)}" data-email="${esc(u.email || '')}">Nova senha</button><button class="ib del" data-act="adm-del" data-id="${esc(u.id)}" data-email="${esc(u.email || '')}" aria-label="Remover acesso de ${esc(u.email || '')}">${ico('trash')}</button>`}</div>`).join('')}
+    ${adminUsers === 'carregando' ? '<p class="note">Carregando acessos…</p>' : lista.map(u => `<div class="mini"><span class="grow"><strong>${esc(u.name ? u.name + ' — ' : '')}${esc(u.email || '')}</strong>${u.admin ? ' (você, administrador)' : ''}<br><small>Criado em ${esc(new Date(u.created_at).toLocaleDateString('pt-BR'))}${u.last_sign_in_at ? ' · último acesso ' + esc(new Date(u.last_sign_in_at).toLocaleDateString('pt-BR')) : ' · ainda não entrou'}</small></span>
+      ${u.admin ? '' : `<button class="btn ghost" data-act="adm-name" data-id="${esc(u.id)}" data-email="${esc(u.email || '')}" data-name="${esc(u.name || '')}">Nome</button><button class="btn ghost" data-act="adm-wipe" data-id="${esc(u.id)}" data-email="${esc(u.email || '')}">Apagar dados</button><button class="btn ghost" data-act="adm-pass" data-id="${esc(u.id)}" data-email="${esc(u.email || '')}">Nova senha</button><button class="ib del" data-act="adm-del" data-id="${esc(u.id)}" data-email="${esc(u.email || '')}" aria-label="Remover acesso de ${esc(u.email || '')}">${ico('trash')}</button>`}</div>`).join('')}
   </section>`;
 }
 async function admRun(body, ok){
@@ -1032,12 +1032,15 @@ document.addEventListener('click', e => {
     case 'prev': { const i = ml.indexOf(cur); if (i > 0) { cur = ml[i - 1]; render(); } break; }
     case 'next': { const i = ml.indexOf(cur); if (i < ml.length - 1) { cur = ml[i + 1]; render(); } break; }
     case 'sair': { sair(); return; }
-    case 'adm-add': openForm({title:'Conceder acesso', fields:[{name:'email', label:'E-mail', type:'text'},{name:'password', label:'Senha de acesso', type:'text'}], cta:'Criar acesso',
+    case 'adm-add': openForm({title:'Conceder acesso', fields:[{name:'name', label:'Nome do perfil', type:'text', ph:'Ex.: Maria'},{name:'email', label:'E-mail', type:'text'},{name:'password', label:'Senha de acesso', type:'text'}], cta:'Criar acesso',
       validate: v => !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v.email || '') ? 'Informe um e-mail válido.' : (String(v.password || '').length < 6 ? 'A senha precisa ter pelo menos 6 caracteres.' : ''),
-      onSave: v => { admRun({action:'create', email:v.email, password:v.password}, 'Acesso criado para ' + v.email + '.'); }}); return;
+      onSave: v => { admRun({action:'create', name:v.name, email:v.email, password:v.password}, 'Acesso criado para ' + v.email + '.'); }}); return;
     case 'adm-pass': { const uidU = t.dataset.id, em = t.dataset.email; openForm({title:'Nova senha para ' + em, fields:[{name:'password', label:'Nova senha', type:'text'}], cta:'Salvar senha',
       validate: v => String(v.password || '').length < 6 ? 'A senha precisa ter pelo menos 6 caracteres.' : '',
       onSave: v => { admRun({action:'password', id:uidU, password:v.password}, 'Senha alterada.'); }}); return; }
+    case 'adm-name': { const uidU = t.dataset.id; openForm({title:'Nome do perfil de ' + t.dataset.email, fields:[{name:'name', label:'Nome', type:'text', value:t.dataset.name}], cta:'Salvar nome',
+      validate: v => !v.name ? 'Escreva o nome.' : '', onSave: v => { admRun({action:'rename', id:uidU, name:v.name}, 'Nome salvo.'); }}); return; }
+    case 'adm-wipe': { const uidU = t.dataset.id, em = t.dataset.email; confirmBox(`Apagar todos os dados de ${em}?`, () => { admRun({action:'wipe', id:uidU}, 'Dados apagados. O perfil ficou em branco.'); }, 'Apagar dados', 'Receitas, faturas, compras, pessoas e recebimentos dessa pessoa serão apagados. O nome e o acesso continuam.'); return; }
     case 'adm-del': { const uidU = t.dataset.id, em = t.dataset.email; confirmBox(`Remover o acesso de ${em}? Os dados dessa pessoa também serão apagados.`, () => { admRun({action:'delete', id:uidU}, 'Acesso removido.'); }, 'Remover'); return; }
     case 'theme': {
       const next = effTheme() === 'dark' ? 'light' : 'dark';
