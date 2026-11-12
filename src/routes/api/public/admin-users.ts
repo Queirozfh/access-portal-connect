@@ -9,7 +9,7 @@ async function requireAdmin(request: Request) {
   const auth = request.headers.get("authorization") || "";
   const token = auth.startsWith("Bearer ") ? auth.slice(7) : "";
   if (token.split(".").length !== 3) return null;
-  const url = process.env.SUPABASE_URL!, key = process.env.SUPABASE_PUBLISHABLE_KEY!;
+  const url = process.env['SUPABASE_URL']!, key = process.env['SUPABASE_PUBLISHABLE_KEY']!;
   const sb = createClient<Database>(url, key, {
     global: {
       headers: { Authorization: `Bearer ${token}` },
