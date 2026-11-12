@@ -394,7 +394,7 @@ function seedGio(){
 let S = seed();
 let cur = '2026-10';
 let tab = 'geral';
-let filt = 'ativos';
+let filt = 'ativos', catFilt = '';
 let dbDoc = null, dl = null, saveTimer = null, saving = false, pending = false;
 let LS = 'contas-do-mes-v1';
 
@@ -677,6 +677,21 @@ function geral(){
   </section>
 
   <section class="panel">
+    ${head('mint','chart',`Gasto por categoria em ${esc(mLabel(cur))}`,'Fatia de cada categoria sobre o total de compras e assinaturas ativas no mês.')}
+    ${donut(catTotals(cur), c => ccol(c), 'Gasto por categoria')}
+  </section>
+
+  <section class="panel">
+    ${head('sky','down',`Relatório de ${esc(mLabel(cur))}`,'Resumo completo do mês para prestar contas ou arquivar.')}
+    <div class="pills"><button class="btn primary" data-act="exp-mes-pdf">${ico('down')}Exportar PDF</button><button class="btn" data-act="exp-mes-csv">${ico('down')}Planilha (CSV/Excel)</button></div>
+  </section>
+
+  <section class="panel">
+    ${head('peach','time','Compromisso futuro','Quanto já está comprometido nos próximos meses com parcelas e assinaturas já cadastradas.')}
+    ${projecao()}
+  </section>
+
+  <section class="panel">
     ${head('butter','info','Palavras que usamos','Cada termo, em uma frase.')}
     <details class="gl"><summary>Fatura</summary><p>Conta que você paga de uma vez: cartão, plano, curso. É o total que sai da sua conta.</p></details>
     <details class="gl"><summary>Parte de terceiros</summary><p>O que Mãe, Pai e outros devem a você porque usaram sua fatura. Esse dinheiro volta para você.</p></details>
@@ -711,6 +726,56 @@ function catBars(){
   return rows.map(([c, v]) => `<div class="cat"><div class="name"><span class="dot" style="background:var(--${ccol(c)})"></span>${esc(c)}</div>
     <div class="track"><div class="seg s-sky" style="width:${v.me / mx * 100}%"></div><div class="seg s-lav" style="width:${(v.t - v.me) / mx * 100}%"></div></div><div class="val">${money(v.t)}</div></div>`).join('')
     + `<div class="legend"><span><i style="background:var(--sky)"></i>Sua parte</span><span><i style="background:var(--lav)"></i>Terceiros</span></div>`;
+}
+function catTotals(m){
+  const by = {}; S.purchases.forEach(p => { const a = planAmt(p, m); if (a) by[p.cat || 'Outros'] = (by[p.cat || 'Outros'] || 0) + a; }); return by;
+}
+function donut(by, colOf, label){
+  const rows = Object.entries(by).filter(r => r[1] > 0.005).sort((a, b) => b[1] - a[1]), total = sum(rows, r => r[1]);
+  if (!rows.length) return emptyBox('Nenhuma compra neste mês', 'Cadastre compras e assinaturas na aba “Compras e parcelas”.');
+  const pct = v => (v / total * 100).toFixed(1).replace('.', ',') + '%';
+  const cx = 115, cy = 110, R = 92, r = 54, pt = (rad, ang) => [cx + rad * Math.cos(ang), cy + rad * Math.sin(ang)];
+  let segs = '', angle = -Math.PI / 2;
+  if (rows.length === 1) segs = `<circle cx="${cx}" cy="${cy}" r="${(R + r) / 2}" fill="none" stroke="var(--${colOf(rows[0][0])})" stroke-width="${R - r}"/>`;
+  else rows.forEach(([n, v], i) => {
+    const a2 = angle + (v / total) * 2 * Math.PI, large = (v / total) > 0.5 ? 1 : 0;
+    const [x1, y1] = pt(R, angle), [x2, y2] = pt(R, a2 - 0.0001), [x3, y3] = pt(r, a2 - 0.0001), [x4, y4] = pt(r, angle);
+    segs += `<path d="M ${x1.toFixed(2)} ${y1.toFixed(2)} A ${R} ${R} 0 ${large} 1 ${x2.toFixed(2)} ${y2.toFixed(2)} L ${x3.toFixed(2)} ${y3.toFixed(2)} A ${r} ${r} 0 ${large} 0 ${x4.toFixed(2)} ${y4.toFixed(2)} Z" fill="var(--${colOf(n)})" stroke="var(--card,#fff)" stroke-width="1.5"><title>${esc(n)}: ${money(v)} (${pct(v)})</title></path>`;
+    if (v / total >= 0.07) { const [tx, ty] = pt((R + r) / 2, (angle + a2) / 2); segs += `<text x="${tx.toFixed(1)}" y="${ty.toFixed(1)}" text-anchor="middle" dominant-baseline="central" style="fill:#1d2540;font-weight:700;font-size:12px">${pct(v)}</text>`; }
+    angle = a2;
+  });
+  return `<div style="display:grid;gap:14px;align-items:center;grid-template-columns:minmax(230px,300px) 1fr">
+    <svg class="chart" viewBox="0 0 230 220" role="img" aria-label="${esc(label)}">${segs}
+      <text x="${cx}" y="${cy - 8}" text-anchor="middle" style="fill:var(--ink2);font-size:11px">Total do mês</text>
+      <text x="${cx}" y="${cy + 12}" text-anchor="middle" style="fill:var(--ink);font-weight:700;font-size:14px;font-family:Fraunces,Georgia,serif">${money(total)}</text></svg>
+    <div class="legend">${rows.map(([n, v]) => `<span><i style="background:var(--${colOf(n)})"></i>${esc(n)} — ${money(v)} (${pct(v)})</span>`).join('')}</div></div>`;
+}
+function projData(from, k = 12){
+  const out = []; let acc = 0;
+  for (let i = 1; i <= k; i++) {
+    const m = ymAdd(from, i); let parc = 0, rec = 0, me = 0;
+    S.purchases.forEach(p => { const a = planAmt(p, m); if (!a) return; if (p.n == null) rec += a; else parc += a; if (isTit(p.who)) me += a; });
+    acc += parc + rec; out.push({m, parc: r2(parc), rec: r2(rec), tot: r2(parc + rec), me: r2(me), acc: r2(acc)});
+  }
+  return out;
+}
+function projecao(){
+  const d = projData(cur, 12);
+  if (!d.some(x => x.tot > 0.005)) return emptyBox('Nada comprometido à frente', 'Nenhuma parcela ou assinatura ativa nos próximos meses.');
+  const mx = Math.max(...d.map(x => x.tot), 1), W = 720, H = 200, base = H - 26, ch = base - 20, gw = W / d.length, bw = 30;
+  let g = '';
+  d.forEach((x, i) => { const cx = i * gw + gw / 2, a = x.parc / mx * ch, b = x.rec / mx * ch;
+    g += `<g><title>${esc(mLabel(x.m))}: parcelas ${money(x.parc)}, assinaturas ${money(x.rec)}</title>
+      <rect x="${cx - bw / 2}" y="${base - a}" width="${bw}" height="${a}" rx="4" fill="var(--peach)"/>
+      <rect x="${cx - bw / 2}" y="${base - a - b}" width="${bw}" height="${b}" rx="4" fill="var(--lav)"/>
+      <text x="${cx}" y="${H - 8}" text-anchor="middle">${mLabel(x.m)}</text></g>`; });
+  const tParc = sum(d, x => x.parc);
+  return `<svg class="chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="Valor comprometido nos próximos 12 meses">${g}</svg>
+    <div class="legend"><span><i style="background:var(--peach)"></i>Parcelas</span><span><i style="background:var(--lav)"></i>Assinaturas e recorrentes</span></div>
+    <div style="overflow-x:auto;margin-top:10px"><table style="width:100%;border-collapse:collapse;font-size:13px">
+      <thead><tr style="text-align:right"><th style="text-align:left;padding:6px">Mês</th><th style="padding:6px">Parcelas</th><th style="padding:6px">Recorrentes</th><th style="padding:6px">Total</th><th style="padding:6px">Sua parte</th><th style="padding:6px">Acumulado</th></tr></thead>
+      <tbody>${d.map(x => `<tr style="text-align:right;border-top:1px solid var(--line,rgba(127,127,127,.2))"><td style="text-align:left;padding:6px">${esc(mLabel(x.m))}</td><td style="padding:6px">${money(x.parc)}</td><td style="padding:6px">${money(x.rec)}</td><td style="padding:6px"><strong>${money(x.tot)}</strong></td><td style="padding:6px">${money(x.me)}</td><td style="padding:6px">${money(x.acc)}</td></tr>`).join('')}</tbody></table></div>
+    <p class="note" style="margin-top:8px">Restam ${money(tParc)} em parcelas nos próximos 12 meses. Some isso antes de assumir uma nova compra parcelada.</p>`;
 }
 function pieChart(){
   const by = {};
@@ -796,6 +861,7 @@ function vFaturas(){
 function comprasItems(){
   let items = S.purchases.filter(p => filt === 'todos' ? true : filt === 'ativos' ? planOn(p, cur) : p.who === filt);
   if (filt !== 'todos' && filt !== 'ativos') items = items.filter(p => planOn(p, cur));
+  if (catFilt) items = items.filter(p => (p.cat || 'Outros') === catFilt);
   let next = S.purchases.reduce((m, p) => Math.max(m, typeof p.ord === 'number' ? p.ord : -1), -1) + 1;
   S.purchases.forEach(p => { if (typeof p.ord !== 'number') p.ord = next++; });
   items.sort((a, b) => a.ord - b.ord || a.who.localeCompare(b.who) || a.desc.localeCompare(b.desc));
@@ -809,6 +875,7 @@ function vCompras(){
     ${head('lav','bag','Compras, parcelas e assinaturas','Cadastre cada item uma vez. Os meses seguintes aparecem sozinhos.')}
     <div class="bar"><p>Em ${esc(mLabel(cur))}: <strong>${money(s.titular + s.emb + s.fora)}</strong> em itens, sendo <strong>${money(s.titular)}</strong> seus e <strong>${money(s.emb + s.fora)}</strong> de terceiros.</p><button class="btn primary" data-act="add-purchase">${ico('plus')}Novo item</button></div>
     <div class="pills" role="group" aria-label="Filtrar" style="margin-bottom:12px">${pills.map(([k, l]) => `<button class="pill" data-filt="${esc(k)}" aria-pressed="${filt === k}">${esc(l)}</button>`).join('')}</div>
+    <div class="pills" role="group" aria-label="Filtrar por categoria" style="margin-bottom:12px"><button class="pill" data-cfilt="" aria-pressed="${!catFilt}">Todas as categorias</button>${S.cats.map(c => `<button class="pill" data-cfilt="${esc(c)}" aria-pressed="${catFilt === c}"><span class="dot" style="display:inline-block;width:8px;height:8px;border-radius:2px;margin-right:5px;background:var(--${ccol(c)})"></span>${esc(c)}</button>`).join('')}</div>
     ${items.length ? `<div class="list">${items.map((p, i) => {
       const on = planOn(p, cur), idx = planIdx(p, cur), c = pcol(p.who);
       let prog = '';
@@ -1030,11 +1097,51 @@ function csv(){
   return '\uFEFF' + L.join('\r\n');
 }
 
+function blobDown(name, data, type){
+  const u = URL.createObjectURL(new Blob([data], {type})), a = document.createElement('a');
+  a.href = u; a.download = name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(u), 2000);
+}
+function monthItems(m){ return S.purchases.filter(p => planAmt(p, m)).sort((a, b) => a.who.localeCompare(b.who) || a.desc.localeCompare(b.desc)); }
+function csvMes(m = cur){
+  const q = v => '"' + String(v ?? '').replace(/"/g, '""') + '"', n = v => String(r2(v)).replace('.', ','), s = stats(m), L = [];
+  L.push([`Resumo de ${mLabel(m)}`].map(q).join(';'));
+  [['Receitas', s.receitas], ['Total das faturas', s.faturas], ['Pago', s.pago], ['A pagar', s.aPagar], ['Parte de terceiros', s.emb + s.fora], ['Sua parte', s.liquido], ['Resultado', s.resultado]].forEach(([k, v]) => L.push([k, n(v)].map(q).join(';')));
+  L.push('', ['Faturas','Valor','Situação'].map(q).join(';'));
+  s.bills.forEach(b => L.push([b.desc, n(b.valor), b.paid ? 'Paga' : 'Em aberto'].map(q).join(';')));
+  L.push('', ['Item','Responsável','Categoria','Parcela','Valor no mês'].map(q).join(';'));
+  monthItems(m).forEach(p => { const i = planIdx(p, m); L.push([p.desc, p.who, p.cat, p.n == null ? 'Recorrente' : `${i}/${p.n}`, n(planAmt(p, m))].map(q).join(';')); });
+  L.push('', ['Categoria','Total'].map(q).join(';'));
+  Object.entries(catTotals(m)).sort((a, b) => b[1] - a[1]).forEach(([c, v]) => L.push([c, n(v)].map(q).join(';')));
+  L.push('', ['Pessoa','Devido','Recebido','Em aberto'].map(q).join(';'));
+  S.people.forEach(p => { const d = s.dev[p.name] || 0; if (d > 0.005 || s.rec[p.name]) L.push([p.name, n(d), n(s.rec[p.name] || 0), n(Math.max(0, s.aberto[p.name] || 0))].map(q).join(';')); });
+  return '\uFEFF' + L.join('\r\n');
+}
+function pdfMes(m = cur){
+  const s = stats(m), w = window.open('', '_blank');
+  if (!w) { toast('Permita janelas pop-up para gerar o PDF.'); return; }
+  const tr = cells => '<tr>' + cells.map((c, i) => `<td${i ? ' class="r"' : ''}>${c}</td>`).join('') + '</tr>';
+  const byWho = {}; monthItems(m).forEach(p => (byWho[p.who] = byWho[p.who] || []).push(p));
+  w.document.write(`<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><title>Resumo ${esc(mLabel(m))}</title><style>
+    body{font-family:Georgia,serif;color:#1d2540;margin:32px;font-size:12px}h1{font-size:22px;margin:0}h2{font-size:15px;margin:22px 0 6px;border-bottom:1px solid #ccc;padding-bottom:3px}
+    table{width:100%;border-collapse:collapse}td,th{padding:4px 6px;border-bottom:1px solid #eee;text-align:left}.r{text-align:right}.tot td{font-weight:700;border-top:1px solid #999}
+    .grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:12px}.box{border:1px solid #ddd;border-radius:6px;padding:8px}.box b{display:block;font-size:14px;margin-top:2px}
+    @media print{body{margin:12mm}}</style></head><body>
+    <h1>Contas do mês — ${esc(mLabel(m))}</h1><div>${esc(S.titular)} · gerado em ${new Date().toLocaleDateString('pt-BR')}</div>
+    <div class="grid"><div class="box">Receitas<b>${money(s.receitas)}</b></div><div class="box">Faturas<b>${money(s.faturas)}</b></div><div class="box">Terceiros<b>${money(s.emb + s.fora)}</b></div><div class="box">Sua parte<b>${money(s.liquido)}</b></div></div>
+    <h2>Faturas</h2><table>${s.bills.map(b => tr([esc(b.desc), b.paid ? 'Paga' : 'Em aberto', money(b.valor)])).join('')}<tr class="tot"><td>Total</td><td></td><td class="r">${money(s.faturas)}</td></tr></table>
+    <h2>Por pessoa</h2><table><tr><th>Pessoa</th><th class="r">Devido</th><th class="r">Recebido</th><th class="r">Em aberto</th></tr>${S.people.filter(p => (s.dev[p.name] || 0) > 0.005).map(p => tr([esc(p.name), money(s.dev[p.name]), money(s.rec[p.name] || 0), money(Math.max(0, s.aberto[p.name] || 0))])).join('')}</table>
+    <h2>Por categoria</h2><table>${Object.entries(catTotals(m)).sort((a, b) => b[1] - a[1]).map(([c, v]) => tr([esc(c), money(v)])).join('')}</table>
+    ${Object.entries(byWho).map(([who, its]) => `<h2>Itens de ${esc(who)}</h2><table>${its.map(p => tr([esc(p.desc), esc(p.cat || ''), p.n == null ? 'Recorrente' : `${planIdx(p, m)}/${p.n}`, money(planAmt(p, m))])).join('')}<tr class="tot"><td>Total</td><td></td><td></td><td class="r">${money(sum(its, p => planAmt(p, m)))}</td></tr></table>`).join('')}
+    <script>setTimeout(()=>print(),300)<\/script></body></html>`);
+  w.document.close();
+}
+
 /* ============================ eventos ============================ */
 document.addEventListener('click', e => {
-  const t = e.target.closest('[data-tab],[data-act],[data-filt],[data-month]');
+  const t = e.target.closest('[data-tab],[data-act],[data-filt],[data-cfilt],[data-month]');
   if (!t) return;
   if (t.dataset.tab) { tab = t.dataset.tab; render(); window.scrollTo({top: 0}); return; }
+  if (t.dataset.cfilt !== undefined) { catFilt = t.dataset.cfilt; render(); return; }
   if (t.dataset.filt) { filt = t.dataset.filt; render(); return; }
   if (t.dataset.month) { cur = t.dataset.month; render(); return; }
   const a = t.dataset.act, id = t.dataset.id, ml = monthsList();
@@ -1096,6 +1203,8 @@ document.addEventListener('click', e => {
       }, 'Excluir', 'Você poderá restaurar este mês com todos os dados em Ajustes.'); break; }
     case 'restore-month': if (restaurarMes(t.dataset.m)) { persist(); render(); toast('Mês restaurado com todos os dados.'); } break;
     case 'add-cat': openForm({title:'Nova categoria', fields:[{name:'name', label:'Nome', type:'text'}], validate: v => !v.name ? 'Escreva o nome.' : S.cats.includes(v.name) ? 'Essa categoria já existe.' : '', onSave: v => S.cats.push(v.name)}); break;
+    case 'exp-mes-csv': blobDown(`resumo-${cur}.csv`, csvMes(cur), 'text/csv;charset=utf-8'); toast('Planilha do mês baixada.'); break;
+    case 'exp-mes-pdf': pdfMes(cur); break;
     case 'exp-csv': saveFile('controle-financeiro.csv', csv(), 'Resumo exportado.'); break;
     case 'exp-json': saveFile('controle-financeiro-copia.json', JSON.stringify(S, null, 1), 'Cópia salva.'); break;
     case 'reset': confirmBox('Voltar aos dados iniciais? Tudo o que você alterou será substituído.', () => { S = seed(); cur = S.start; }, 'Voltar aos iniciais'); break;
