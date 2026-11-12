@@ -33,7 +33,7 @@ export const Route = createFileRoute("/api/public/admin-users")({
       POST: async ({ request }) => {
         const adminId = await requireAdmin(request);
         if (!adminId) return json({ error: "Acesso negado." }, 403);
-        let body: { action?: string; email?: string; password?: string; id?: string; name?: string };
+        let body: { action?: string; amount?: number; unit?: string; email?: string; password?: string; id?: string; name?: string };
         try { body = await request.json(); } catch { return json({ error: "Pedido inválido." }, 400); }
         const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
         const a = supabaseAdmin.auth.admin;
@@ -69,7 +69,7 @@ export const Route = createFileRoute("/api/public/admin-users")({
               } catch { /* ignore */ }
             }
             const key = (id: string) => (id === adminId ? (stats[id] ? id : "main") : id);
-            return json({ users: data.users.map((u) => ({ id: u.id, name: names[u.id] || names[key(u.id)] || "", stats: stats[u.id] || stats[key(u.id)] || null, email: u.email, created_at: u.created_at, last_sign_in_at: u.last_sign_in_at, suspended: !!(u as { banned_until?: string }).banned_until && new Date((u as { banned_until?: string }).banned_until!).getTime() > Date.now(), admin: u.id === adminId })) });
+            return json({ users: data.users.map((u) => ({ id: u.id, name: names[u.id] || names[key(u.id)] || "", stats: stats[u.id] || stats[key(u.id)] || null, expires_at: (u.app_metadata as { expires_at?: string } | undefined)?.expires_at || null, email: u.email, created_at: u.created_at, last_sign_in_at: u.last_sign_in_at, suspended: !!(u as { banned_until?: string }).banned_until && new Date((u as { banned_until?: string }).banned_until!).getTime() > Date.now(), admin: u.id === adminId })) });
           }
           case "create": {
             if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || email.length > 255) return json({ error: "E-mail inválido." }, 400);
@@ -106,6 +106,25 @@ export const Route = createFileRoute("/api/public/admin-users")({
             const { error } = await a.updateUserById(id, { ban_duration: body.action === "suspend" ? "876000h" : "none" });
             if (error) return json({ error: error.message }, 400);
             return json({ ok: true });
+          }
+          case "expiry": {
+            if (!id || id === adminId) return json({ error: "Não é possível limitar o acesso do administrador." }, 400);
+            const n = Math.floor(Number(body.amount));
+            const units: Record<string, number> = { horas: 3600e3, dias: 86400e3 };
+            let exp: string | null = null;
+            if (body.unit !== "sem") {
+              if (!(n >= 1 && n <= 1000)) return json({ error: "Informe uma duração entre 1 e 1000." }, 400);
+              const d = new Date();
+              if (units[body.unit || ""]) d.setTime(d.getTime() + n * units[body.unit!]!);
+              else if (body.unit === "meses") d.setMonth(d.getMonth() + n);
+              else if (body.unit === "anos") d.setFullYear(d.getFullYear() + n);
+              else return json({ error: "Unidade inválida." }, 400);
+              exp = d.toISOString();
+            }
+            const { data: cu } = await a.getUserById(id);
+            const { error } = await a.updateUserById(id, { app_metadata: { ...(cu?.user?.app_metadata || {}), expires_at: exp } });
+            if (error) return json({ error: error.message }, 400);
+            return json({ ok: true, expires_at: exp });
           }
           case "delete": {
             if (!id || id === adminId) return json({ error: "Não é possível remover a conta do administrador." }, 400);
