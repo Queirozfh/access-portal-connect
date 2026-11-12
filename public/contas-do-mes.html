@@ -340,7 +340,16 @@ function parseNum(s){
 const numIn = v => (v == null || v === '') ? '' : String(r2(v)).replace('.', ',');
 
 /* ============================ dados iniciais ============================ */
-function seed(){
+const GIO_ID='ad46a5e7-af23-4cff-b190-ea6b6140013d';
+let meuId = null, isAdmin = false;
+function seed(){ return meuId === GIO_ID ? seedGio() : seedVazio(); }
+function seedVazio(){
+  const d = new Date(), m = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
+  return {v: 1, titular: 'Eu', start: m, count: 12, hidden: [], yellow: 0.70, red: 0.90, people: [],
+    cats: ['Alimentação','Assinaturas','Carro','Casa','Compras online','Educação','Lazer','Pets','Saúde','Vestuário','Fatura de cartão','Outros'],
+    incomes: [], bills: [], purchases: [], received: []};
+}
+function seedGio(){
   const P = (desc, cat, who, valor, start, n, obs='') => ({id: uid(), desc, cat, who, valor, start, n, obs});
   const bills = [];
   const B = (month, desc, valor, paid=false) => bills.push({id: uid(), month, desc, valor, paid});
@@ -387,7 +396,7 @@ let cur = '2026-10';
 let tab = 'geral';
 let filt = 'ativos';
 let dbDoc = null, dl = null, saveTimer = null, saving = false, pending = false;
-const LS = 'contas-do-mes-v1';
+let LS = 'contas-do-mes-v1';
 
 function normalize(o){
   const d = seed();
@@ -432,6 +441,13 @@ async function token(){
   return sess.at;
 }
 function sair(){ sess = null; localStorage.removeItem(SESS); localStorage.removeItem(LS); location.reload(); }
+function jwtSub(t){ try { return JSON.parse(atob(t.split('.')[1].replace(/-/g,'+').replace(/_/g,'/'))).sub; } catch (e) { return null; } }
+async function adminApi(body){
+  const r = await fetch('/api/public/admin-users',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+await token()},body:JSON.stringify(body)});
+  const d = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(d.error || 'Não foi possível concluir.');
+  return d;
+}
 function telaLogin(msg){
   app.innerHTML = `<div style="min-height:80vh;display:grid;place-items:center"><form id="loginf" class="sheet" style="width:min(380px,100%)">
     <div class="brand" style="margin-bottom:14px"><div class="logo">${ico('coin')}</div><div><h1>Contas do mês</h1><p>Entre para ver suas contas</p></div></div>
@@ -450,13 +466,18 @@ async function initStore(){
   try {
     const API=CB+'/rest/v1/app_state';
     const hdr = async () => ({apikey:CKEY,'Content-Type':'application/json',Authorization:'Bearer '+await token()});
-    const r = await fetch(API+'?id=eq.main&select=json',{headers:await hdr()});
+    meuId = jwtSub(await token());
+    const rowId = meuId === GIO_ID ? 'main' : meuId;
+    LS = meuId === GIO_ID ? 'contas-do-mes-v1' : 'contas-do-mes-v1-' + meuId;
+    S = seed();
+    try { const rr = await fetch(CB+'/rest/v1/rpc/has_role',{method:'POST',headers:await hdr(),body:JSON.stringify({_user_id:meuId,_role:'admin'})}); isAdmin = rr.ok && (await rr.json()) === true; } catch (e) { isAdmin = false; }
+    const r = await fetch(API+'?id=eq.'+encodeURIComponent(rowId)+'&select=json',{headers:await hdr()});
     if (r.status === 401) throw new Error('auth');
     if (!r.ok) throw 0;
     const rows = await r.json();
     if (rows.length) { try { S = normalize(JSON.parse(rows[0].json)); } catch (e) {} }
     else { const local = loadLocal(); if (local) S = local; }
-    dbDoc = { set: async (o) => { const w = await fetch(API+'?on_conflict=id',{method:'POST',headers:{...await hdr(),Prefer:'resolution=merge-duplicates'},body:JSON.stringify({id:'main',json:o.json,updated_at:new Date().toISOString()})}); if(!w.ok) throw 0; } };
+    dbDoc = { set: async (o) => { const w = await fetch(API+'?on_conflict=id',{method:'POST',headers:{...await hdr(),Prefer:'resolution=merge-duplicates'},body:JSON.stringify({id:rowId,json:o.json,updated_at:new Date().toISOString()})}); if(!w.ok) throw 0; } };
     if (!rows.length) persist();
   } catch (e) {
     if (e && e.message === 'auth' || e && e.message === 'sem sessão') { sess = null; localStorage.removeItem(SESS); return telaLogin('Sua sessão expirou. Entre novamente.'); }
@@ -547,6 +568,7 @@ function render(){
   const app = $('#app'); if (!app) return;
   const ml = monthsList();
   const tabs = [['geral','home','Visão geral'],['receitas','in','Receitas'],['faturas','card','Faturas'],['compras','bag','Compras e parcelas'],['receber','users','A receber'],['tempo','time','Linha do tempo'],['ajustes','gear','Ajustes']];
+  if (isAdmin) tabs.push(['admin','users','Painel do admin']);
   app.innerHTML = `
   <header class="top">
     <div class="brand"><div class="logo">${ico('coin')}</div><div><h1>Contas de ${esc(S.titular)}</h1><p>Seu dinheiro do mês, em linguagem simples</p></div></div>
@@ -564,7 +586,7 @@ function render(){
   <nav class="tabs" role="tablist" aria-label="Seções">
     ${tabs.map(([k, i, l]) => `<button class="tab" role="tab" data-tab="${k}" aria-selected="${tab === k}">${ico(i)}${l}</button>`).join('')}
   </nav>
-  <main>${({geral, receitas: vReceitas, faturas: vFaturas, compras: vCompras, receber: vReceber, tempo: vTempo, ajustes: vAjustes})[tab]()}</main>`;
+  <main>${({geral, receitas: vReceitas, faturas: vFaturas, compras: vCompras, receber: vReceber, tempo: vTempo, ajustes: vAjustes, admin: vAdmin})[tab]()}</main>`;
   setStatus();
   const at=document.querySelector('.tab[aria-selected="true"]'); if(at&&document.documentElement.classList.contains('mobile')) at.scrollIntoView({inline:'center',block:'nearest'});
 }
@@ -851,6 +873,23 @@ function vTempo(){
 }
 
 /* ------------- ajustes ------------- */
+let adminUsers = null, adminMsg = '';
+function vAdmin(){
+  if (!isAdmin) return '';
+  if (adminUsers === null) { adminUsers = 'carregando'; adminApi({action:'list'}).then(d => { adminUsers = d.users; render(); }).catch(e => { adminUsers = []; adminMsg = e.message; render(); }); }
+  const lista = Array.isArray(adminUsers) ? adminUsers : [];
+  return `<section class="panel">
+    ${head('lav','users','Painel do admin','Dê acesso a outras pessoas. Cada e-mail tem o próprio sistema, vazio e separado do seu.')}
+    <div class="pills" style="margin-bottom:12px"><button class="btn primary" data-act="adm-add">${ico('plus')}Conceder acesso</button></div>
+    ${adminMsg ? `<p class="note" style="margin-bottom:10px">${esc(adminMsg)}</p>` : ''}
+    ${adminUsers === 'carregando' ? '<p class="note">Carregando acessos…</p>' : lista.map(u => `<div class="mini"><span class="grow"><strong>${esc(u.email || '')}</strong>${u.admin ? ' (você, administrador)' : ''}<br><small>Criado em ${esc(new Date(u.created_at).toLocaleDateString('pt-BR'))}${u.last_sign_in_at ? ' · último acesso ' + esc(new Date(u.last_sign_in_at).toLocaleDateString('pt-BR')) : ' · ainda não entrou'}</small></span>
+      ${u.admin ? '' : `<button class="btn ghost" data-act="adm-pass" data-id="${esc(u.id)}" data-email="${esc(u.email || '')}">Nova senha</button><button class="ib del" data-act="adm-del" data-id="${esc(u.id)}" data-email="${esc(u.email || '')}" aria-label="Remover acesso de ${esc(u.email || '')}">${ico('trash')}</button>`}</div>`).join('')}
+  </section>`;
+}
+async function admRun(body, ok){
+  try { await adminApi(body); adminMsg = ''; toast(ok); } catch (e) { adminMsg = e.message; toast(e.message); }
+  adminUsers = null; render();
+}
 function vAjustes(){
   const quitado = monthQuitado(cur), ultimo = monthsList().length <= 1;
   return `<section class="panel">
@@ -993,6 +1032,13 @@ document.addEventListener('click', e => {
     case 'prev': { const i = ml.indexOf(cur); if (i > 0) { cur = ml[i - 1]; render(); } break; }
     case 'next': { const i = ml.indexOf(cur); if (i < ml.length - 1) { cur = ml[i + 1]; render(); } break; }
     case 'sair': { sair(); return; }
+    case 'adm-add': openForm({title:'Conceder acesso', fields:[{name:'email', label:'E-mail', type:'text'},{name:'password', label:'Senha de acesso', type:'text'}], cta:'Criar acesso',
+      validate: v => !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v.email || '') ? 'Informe um e-mail válido.' : (String(v.password || '').length < 6 ? 'A senha precisa ter pelo menos 6 caracteres.' : ''),
+      onSave: v => { admRun({action:'create', email:v.email, password:v.password}, 'Acesso criado para ' + v.email + '.'); }}); return;
+    case 'adm-pass': { const uidU = t.dataset.id, em = t.dataset.email; openForm({title:'Nova senha para ' + em, fields:[{name:'password', label:'Nova senha', type:'text'}], cta:'Salvar senha',
+      validate: v => String(v.password || '').length < 6 ? 'A senha precisa ter pelo menos 6 caracteres.' : '',
+      onSave: v => { admRun({action:'password', id:uidU, password:v.password}, 'Senha alterada.'); }}); return; }
+    case 'adm-del': { const uidU = t.dataset.id, em = t.dataset.email; confirmBox(`Remover o acesso de ${em}? Os dados dessa pessoa também serão apagados.`, () => { admRun({action:'delete', id:uidU}, 'Acesso removido.'); }, 'Remover'); return; }
     case 'theme': {
       const next = effTheme() === 'dark' ? 'light' : 'dark';
       document.documentElement.dataset.theme = next;
