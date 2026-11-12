@@ -56,7 +56,7 @@ export const Route = createFileRoute("/api/public/admin-users")({
             const names: Record<string, string> = {};
             const stats: Record<string, { total: number; ativos: number; updated_at: string }> = {};
             const now = new Date(), ym = now.getFullYear() * 12 + now.getMonth();
-            const toN = (m: string) => { const [y, mo] = String(m || "").split("-").map(Number); return y * 12 + (mo - 1); };
+            const toN = (m: string) => { const [y, mo] = String(m || "").split("-").map(Number); return (y ?? 0) * 12 + ((mo ?? 1) - 1); };
             for (const r of rows || []) {
               try {
                 const st = JSON.parse(r.json);
