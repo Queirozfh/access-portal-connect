@@ -29,6 +29,13 @@
       "when": 1794489269418,
       "tag": "0003_multi_user_and_admin",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1794494594872,
+      "tag": "0004_access_expiry",
+      "breakpoints": true
     }
   ]
 }
