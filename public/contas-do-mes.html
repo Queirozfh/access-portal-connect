@@ -65,6 +65,13 @@ button{cursor:pointer}
 .brand{display:flex;gap:12px;align-items:center}
 .brand .logo{width:44px;height:44px;border-radius:14px;background:var(--lav-bg);color:var(--lav-ink);display:grid;place-items:center;flex:0 0 auto}
 .brand .logo svg{width:24px;height:24px}
+.brand .logo img{width:100%;height:100%;object-fit:contain;border-radius:8px}
+.analysis-text{white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.7}
+.portfolio-total{font-size:26px;font-weight:700}
+.portfolio-actions{display:flex;gap:8px;flex-wrap:wrap}
+.analysis-table{width:100%;border-collapse:collapse;font-size:13px}
+.analysis-table td,.analysis-table th{padding:8px;border-bottom:1px solid var(--line);text-align:right;white-space:nowrap}
+.analysis-table td:first-child,.analysis-table th:first-child{text-align:left}
 .brand h1{font-size:22px}
 .brand p{color:var(--ink2);font-size:13px}
 .monthnav{display:flex;align-items:center;gap:6px;background:var(--panel);border:1px solid var(--line);border-radius:999px;padding:4px}
@@ -410,6 +417,8 @@ function normalize(o){
   if (!o || typeof o !== 'object') return d;
   for (const k of ['incomes','bills','purchases','received','people','cats']) if (!Array.isArray(o[k])) o[k] = d[k];
   o.count = Number.isInteger(o.count) && o.count > 0 ? o.count : 12; if (!Array.isArray(o.hidden)) o.hidden = []; o.titular = o.titular || d.titular; o.start = o.start || d.start;
+  if (!Array.isArray(o.assets)) o.assets = [];
+  if (!o.fx || typeof o.fx !== 'object') o.fx = {rate:null,date:null,source:'Manual'};
   o.yellow = typeof o.yellow === 'number' ? o.yellow : d.yellow; o.red = typeof o.red === 'number' ? o.red : d.red;
   return o;
 }
@@ -467,7 +476,7 @@ function telaSuspenso(){
 function telaLogin(msg){
   accessReady = false; clearInterval(accessMonitor);
   app.innerHTML = `<div style="min-height:80vh;display:grid;place-items:center"><form id="loginf" class="sheet" style="width:min(380px,100%)">
-    <div class="brand" style="margin-bottom:14px"><div class="logo">${ico('coin')}</div><div><h1>Contas do mês</h1><p>Entre para ver suas contas</p></div></div>
+    <div class="brand" style="margin-bottom:14px"><div class="logo"><img src="/__l5e/assets-v1/cf8b0f73-ec34-48c1-bac2-70449b680b78/simbolo-dolar.png" alt="Contas do mês"></div><div><h1>Contas do mês</h1><p>Entre para ver suas contas</p></div></div>
     <label style="display:block;margin-bottom:10px">E-mail<input id="le" type="email" autocomplete="username" required style="display:block;width:100%;margin-top:4px;padding:10px;border:1.5px solid var(--line);border-radius:10px;background:var(--bg);color:var(--ink);font-size:16px"></label>
     <label style="display:block;margin-bottom:14px">Senha<input id="lp" type="password" autocomplete="current-password" required style="display:block;width:100%;margin-top:4px;padding:10px;border:1.5px solid var(--line);border-radius:10px;background:var(--bg);color:var(--ink);font-size:16px"></label>
     ${msg ? `<p class="note" style="color:var(--rose-ink,#b33);margin-bottom:10px">${esc(msg)}</p>` : ''}
@@ -635,11 +644,11 @@ function render(){
   if (accessReady && !isAdmin && accessDeadline(accessExpiresAt).expired) return telaSuspenso();
   const app = $('#app'); if (!app) return;
   const ml = monthsList();
-  const tabs = [['geral','home','Visão geral'],['receitas','in','Receitas'],['faturas','card','Faturas'],['compras','bag','Compras e parcelas'],['receber','users','A receber'],['tempo','time','Linha do tempo'],['ajustes','gear','Ajustes']];
+  const tabs = [['geral','home','Visão geral'],['receitas','in','Receitas'],['faturas','card','Faturas'],['compras','bag','Compras e parcelas'],['receber','users','A receber'],['planejar','bag','Compra planejada'],['patrimonio','coin','Patrimônio'],['tempo','time','Linha do tempo'],['ajustes','gear','Ajustes']];
   if (isAdmin) tabs.push(['admin','users','Admin']);
   app.innerHTML = `
   <header class="top">
-    <div class="brand"><div class="logo">${ico('coin')}</div><div><h1>Contas de ${esc(S.titular)}</h1><p>Seu dinheiro do mês, em linguagem simples</p></div></div>
+    <div class="brand"><div class="logo"><img src="/__l5e/assets-v1/cf8b0f73-ec34-48c1-bac2-70449b680b78/simbolo-dolar.png" alt="Contas do mês"></div><div><h1>Contas de ${esc(S.titular)}</h1><p>Seu dinheiro do mês, em linguagem simples</p></div></div>
     <div class="topnav">
       <div class="monthnav" role="group" aria-label="Escolher mês">
         <button data-act="prev" aria-label="Mês anterior">‹</button>
@@ -655,7 +664,7 @@ function render(){
   <nav class="tabs" role="tablist" aria-label="Seções">
     ${tabs.map(([k, i, l]) => `<button class="tab" role="tab" data-tab="${k}" aria-selected="${tab === k}">${ico(i)}${l}</button>`).join('')}
   </nav>
-  <main>${({geral, receitas: vReceitas, faturas: vFaturas, compras: vCompras, receber: vReceber, tempo: vTempo, ajustes: vAjustes, admin: vAdmin})[tab]()}</main>`;
+  <main>${({geral, receitas: vReceitas, faturas: vFaturas, compras: vCompras, receber: vReceber, planejar: vPlanejar, patrimonio: vPatrimonio, tempo: vTempo, ajustes: vAjustes, admin: vAdmin})[tab]()}</main>`;
   setStatus();
   const at=document.querySelector('.tab[aria-selected="true"]'); if(at&&document.documentElement.classList.contains('mobile')) at.scrollIntoView({inline:'center',block:'nearest'});
 }
@@ -1067,6 +1076,70 @@ function vAjustes(){
   </section>`;
 }
 
+
+/* ============================ planejamento e patrimônio ============================ */
+let analysisController = null, analysisText = '', analysisError = '', analysisEstimate = null;
+let plannedDraft = null, quoteBusy = false, quoteError = '';
+function patrimonioTotais(assets, rate){
+  const reais = sum(assets.filter(a => a.currency === 'BRL'), a => a.balance);
+  const dolares = sum(assets.filter(a => a.currency === 'USD'), a => a.balance);
+  return {reais:r2(reais), dolares:r2(dolares), total: Number.isFinite(rate) && rate > 0 ? r2(reais + dolares * rate) : dolares ? null : r2(reais)};
+}
+function vPatrimonio(){
+  const assets = S.assets || [], fx = S.fx || {}, totals = patrimonioTotais(assets, fx.rate);
+  const usd = v => new Intl.NumberFormat('pt-BR',{style:'currency',currency:'USD'}).format(v);
+  return `<section class="panel">${head('mint','coin','Patrimônio','Saldos informados por você · conversão em reais pela cotação selecionada.')}
+    <div class="two"><div><p class="note">Total em reais</p><p class="portfolio-total">${totals.total == null ? 'Cotação necessária' : money(totals.total)}</p><p class="note">${money(totals.reais)} + ${usd(totals.dolares)}</p></div>
+    <div><p class="note">Dólar de referência (USD/BRL)</p><p class="portfolio-total">${fx.rate ? 'R$ ' + Number(fx.rate).toLocaleString('pt-BR',{maximumFractionDigits:4}) : 'Não informado'}</p>
+    <p class="note">${esc(fx.source || 'Manual')}${fx.date ? ' · data-base ' + esc(fx.date) : ''}</p><p class="note">Cotação diária, não em tempo real; sem taxas bancárias.</p></div></div>
+    <div class="portfolio-actions"><button class="btn" data-act="refresh-fx" ${quoteBusy ? 'disabled' : ''}>${ico('time')}${quoteBusy ? 'Atualizando…' : 'Atualizar dólar'}</button><button class="btn" data-act="manual-fx">${ico('edit')}Cotação manual</button><button class="btn primary" data-act="add-asset">${ico('plus')}Adicionar instituição</button></div>
+    ${quoteError ? `<p class="err" role="alert">${esc(quoteError)}</p>` : ''}
+    ${assets.length ? assets.map(a => `<div class="mini"><div class="grow"><strong>${esc(a.name)}</strong><p class="note">${esc(a.currency)} · atualizado em ${esc(new Date(a.updatedAt).toLocaleString('pt-BR'))}</p></div><strong>${a.currency === 'USD' ? usd(a.balance) : money(a.balance)}</strong><button class="ib" data-act="edit-asset" data-id="${esc(a.id)}" aria-label="Editar ${esc(a.name)}">${ico('edit')}</button><button class="ib del" data-act="del-asset" data-id="${esc(a.id)}" aria-label="Excluir ${esc(a.name)}">${ico('trash')}</button></div>`).join('') : emptyBox('Nenhuma instituição cadastrada','')}
+    </section>`;
+}
+function formAsset(a){
+  openForm({title:a ? 'Atualizar saldo' : 'Nova instituição',fields:[
+    {name:'name',label:'Instituição bancária',type:'text',value:a?.name},
+    {name:'currency',label:'Moeda',type:'select',value:a?.currency || 'BRL',options:[{v:'BRL',l:'Real (BRL)'},{v:'USD',l:'Dólar (USD)'}]},
+    {name:'balance',label:'Saldo na moeda selecionada',type:'money',value:a ? numIn(a.balance) : ''}],
+    validate:v => !v.name || v.name.length > 100 ? 'Informe o nome, com até 100 caracteres.' : !Number.isFinite(v.balance) || Math.abs(v.balance)>1e12 ? 'Informe um saldo válido.' : !['BRL','USD'].includes(v.currency) ? 'Moeda inválida.' : '',
+    onSave:v => { if (!S.assets) S.assets=[]; const entry={...v,updatedAt:new Date().toISOString()}; if(a)Object.assign(a,entry);else S.assets.push({id:uid(),...entry}); }});
+}
+async function refreshQuote(){
+  if(quoteBusy)return; quoteBusy=true; quoteError='';render();
+  try{ const r=await fetch('/api/public/dollar-rate',{headers:{Authorization:'Bearer '+await token()}});const d=await r.json();if(!r.ok)throw new Error(d.error); S.fx=d;persist(); }
+  catch(e){quoteError=e.message;}finally{quoteBusy=false;render();}
+}
+function estimateHtml(){
+  if(!analysisEstimate)return '';
+  return `<p><strong>Parcela estimada: ${money(analysisEstimate.payment)}</strong> · Total ${money(analysisEstimate.total)} sem juros</p><div style="overflow-x:auto"><table class="analysis-table"><thead><tr><th>Mês</th><th>Renda do titular</th><th>Compromisso do titular</th><th>Pessoa após compra</th><th>Saldo do titular após compra</th></tr></thead><tbody>${analysisEstimate.months.map(x => `<tr><td>${esc(mLabel(x.month))}</td><td>${money(x.income)}</td><td>${money(x.committed)}</td><td>${money(x.personAfter)}</td><td>${money(x.remaining)}</td></tr>`).join('')}</tbody></table></div><p class="note">Estimativa: considera o maior entre fatura líquida e compras próprias, evitando somar itens já incluídos na fatura. A compra de terceiros não é descontada da renda do titular; eventual adiantamento não está incluído.</p>`;
+}
+function vPlanejar(){
+  const d=plannedDraft || {description:'',person:S.titular,total:'',installments:1,start:cur};
+  return `<section class="panel">${head('sky','bag','Compra planejada','Análise com Lovable AI · nenhuma compra é cadastrada automaticamente.')}
+    <form id="plan-form"><div class="field"><label for="plan-desc">O que pretende comprar?</label><input id="plan-desc" required minlength="3" maxlength="1000" value="${esc(d.description)}" placeholder="Ex.: Notebook para estudo"></div>
+    <div class="two"><div class="field"><label for="plan-person">Pessoa</label><select id="plan-person">${peopleAll().map(n=>`<option ${n===d.person?'selected':''}>${esc(n)}</option>`).join('')}</select></div><div class="field"><label for="plan-total">Valor total (R$)</label><input id="plan-total" required inputmode="decimal" value="${esc(d.total)}"></div></div>
+    <div class="two"><div class="field"><label for="plan-n">Número de parcelas</label><input id="plan-n" type="number" min="1" max="120" required value="${esc(d.installments)}"></div><div class="field"><label for="plan-start">Primeiro mês</label><input id="plan-start" type="month" required value="${esc(d.start)}"></div></div>
+    <div class="portfolio-actions"><button class="btn primary" type="submit" ${analysisController?'disabled':''}>${ico('chart')}${analysisController?'Analisando…':'Analisar impacto'}</button>${analysisController?'<button class="btn" type="button" data-act="stop-analysis">Parar análise</button>':''}</div></form>
+    <p class="note">A análise usa os lançamentos salvos desta conta e consome créditos de Lovable AI. Não representa aconselhamento financeiro.</p>
+    <p id="analysis-error" class="err" role="alert">${esc(analysisError)}</p><div id="analysis-numbers">${estimateHtml()}</div><p id="analysis-text" class="analysis-text" aria-live="polite">${esc(analysisText)}</p></section>`;
+}
+async function analyzePlanned(){
+  if(analysisController)return;
+  plannedDraft={description:$('#plan-desc').value.trim(),person:$('#plan-person').value,total:$('#plan-total').value,installments:Number($('#plan-n').value),start:$('#plan-start').value};
+  const total=parseNum(plannedDraft.total);
+  if(plannedDraft.description.length<3 || plannedDraft.description.length>1000 || !Number.isFinite(total) || total<=0 || total>1e9 || !Number.isInteger(plannedDraft.installments) || plannedDraft.installments<1 || plannedDraft.installments>120 || !/^\d{4}-(0[1-9]|1[0-2])$/.test(plannedDraft.start)){analysisError='Informe descrição, valor positivo, mês e de 1 a 120 parcelas.';render();return;}
+  analysisText='';analysisError='';analysisEstimate=null;analysisController=new AbortController();const controller=analysisController;render();
+  try{
+    const r=await fetch('/api/public/planned-purchase',{method:'POST',headers:{Authorization:'Bearer '+await token(),'Content-Type':'application/json'},body:JSON.stringify({...plannedDraft,total}),signal:controller.signal});
+    if(!r.ok){const d=await r.json();throw new Error(d.error || 'Não foi possível analisar.');}
+    if(!r.body)throw new Error('Resposta indisponível.');
+    const reader=r.body.getReader(),decoder=new TextDecoder();let buffer='';
+    for(;;){const {value,done}=await reader.read();buffer+=decoder.decode(value,{stream:!done});const lines=buffer.split('\n');buffer=lines.pop() || '';for(const line of lines){if(!line)continue;const d=JSON.parse(line);if(d.error)throw new Error(d.error);if(d.estimate){analysisEstimate=d.estimate;const e=$('#analysis-numbers');if(e)e.innerHTML=estimateHtml();}if(d.text){analysisText+=d.text;const e=$('#analysis-text');if(e)e.textContent=analysisText;}}if(done)break;}
+  }catch(e){analysisError=e.name==='AbortError'?'Análise interrompida.':e.message;}finally{analysisController=null;render();}
+}
+document.addEventListener('submit',e=>{if(e.target.id==='plan-form'){e.preventDefault();analyzePlanned();}});
+
 /* ============================ formulários ============================ */
 function fieldHtml(f){
   const id = 'f-' + f.name, v = f.value ?? '';
@@ -1209,6 +1282,12 @@ document.addEventListener('click', e => {
   const a = t.dataset.act, id = t.dataset.id, ml = monthsList();
   const find = (arr) => arr.find(x => x.id === id);
   switch (a) {
+    case 'add-asset': formAsset();return;
+    case 'edit-asset': formAsset((S.assets || []).find(x=>x.id===id));return;
+    case 'del-asset': confirmBox('Excluir esta instituição?',()=>{S.assets=S.assets.filter(x=>x.id!==id);});return;
+    case 'refresh-fx': refreshQuote();return;
+    case 'manual-fx': openForm({title:'Cotação do dólar',fields:[{name:'rate',label:'1 USD em reais',type:'money',value:S.fx?.rate ? String(S.fx.rate).replace('.',',') : ''}],validate:v=>!Number.isFinite(v.rate)||v.rate<=0||v.rate>10000?'Informe uma cotação positiva válida.':'',onSave:v=>{S.fx={rate:v.rate,source:'Manual',date:new Date().toISOString().slice(0,10)};}});return;
+    case 'stop-analysis': analysisController?.abort();return;
     case 'prev': { const i = ml.indexOf(cur); if (i > 0) { cur = ml[i - 1]; render(); } break; }
     case 'next': { const i = ml.indexOf(cur); if (i < ml.length - 1) { cur = ml[i + 1]; render(); } break; }
     case 'sair': { sair(); return; }
