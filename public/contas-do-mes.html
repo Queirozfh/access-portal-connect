@@ -78,6 +78,12 @@ button{cursor:pointer}
 .save{font-size:12.5px;color:var(--ink2);display:flex;align-items:center;gap:6px}
 .save i{width:8px;height:8px;border-radius:50%;background:var(--mint);display:inline-block}
 .save.warn i{background:var(--butter)}
+.access-notice{padding:10px 14px;margin:0 0 12px;border-radius:8px;overflow-wrap:anywhere;font-size:14px}
+.access-notice strong,.access-notice small{display:block}
+.access-notice small{margin-top:3px}
+.access-notice ul{margin:6px 0 0;padding-left:20px}
+.access-notice svg{width:17px;height:17px;vertical-align:middle;margin-right:6px}
+#access-notices:empty{display:none}
 
 /* abas */
 .tabs{display:flex;gap:6px;overflow-x:auto;padding:4px 2px 12px;scrollbar-width:thin}
@@ -342,6 +348,7 @@ const numIn = v => (v == null || v === '') ? '' : String(r2(v)).replace('.', ','
 /* ============================ dados iniciais ============================ */
 const GIO_ID='ad46a5e7-af23-4cff-b190-ea6b6140013d';
 let meuId = null, isAdmin = false;
+let accessExpiresAt = null, accessMonitor = null, accessReady = false, accessChecking = false;
 function seed(){ return meuId === GIO_ID ? seedGio() : seedVazio(); }
 function seedVazio(){
   const d = new Date(), m = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
@@ -449,14 +456,16 @@ async function adminApi(body){
   return d;
 }
 function telaSuspenso(){
+  accessReady = false; clearInterval(accessMonitor); clearTimeout(saveTimer); dbDoc = null; closeModal();
   sess = null; localStorage.removeItem(SESS);
   app.innerHTML = `<div style="min-height:80vh;display:grid;place-items:center"><div class="sheet" style="width:min(400px,100%);text-align:center">
     <div class="brand" style="justify-content:center;margin-bottom:14px"><div class="logo">${ico('alert')}</div><div style="text-align:left"><h1>Acesso suspenso</h1><p>Este perfil está temporariamente bloqueado</p></div></div>
-    <p class="note" style="margin-bottom:14px">O administrador suspendeu o acesso desta conta. Seus dados continuam guardados e voltam a aparecer quando o acesso for liberado.</p>
+    <p class="note" style="margin-bottom:14px">Para voltar a utilizar o sistema, regularize o pagamento e entre em contato com o administrador para liberar seu acesso. Seus dados continuam guardados.</p>
     <button class="btn" id="voltar" style="width:100%">Voltar ao login</button></div></div>`;
   document.getElementById('voltar').onclick = () => telaLogin();
 }
 function telaLogin(msg){
+  accessReady = false; clearInterval(accessMonitor);
   app.innerHTML = `<div style="min-height:80vh;display:grid;place-items:center"><form id="loginf" class="sheet" style="width:min(380px,100%)">
     <div class="brand" style="margin-bottom:14px"><div class="logo">${ico('coin')}</div><div><h1>Contas do mês</h1><p>Entre para ver suas contas</p></div></div>
     <label style="display:block;margin-bottom:10px">E-mail<input id="le" type="email" autocomplete="username" required style="display:block;width:100%;margin-top:4px;padding:10px;border:1.5px solid var(--line);border-radius:10px;background:var(--bg);color:var(--ink);font-size:16px"></label>
@@ -476,7 +485,7 @@ async function initStore(){
     const hdr = async () => ({apikey:CKEY,'Content-Type':'application/json',Authorization:'Bearer '+await token()});
     const ur = await fetch(CB+'/auth/v1/user',{headers:await hdr()});
     if (!ur.ok) { const er = await ur.json().catch(() => ({})); if (er.error_code === 'user_banned' || /banned/i.test(er.msg || '')) throw new Error('suspenso'); if (ur.status === 401 || ur.status === 403) throw new Error('auth'); }
-    else { const uj = await ur.json().catch(() => ({})); const ex = uj && uj.app_metadata && uj.app_metadata.expires_at; if (ex && new Date(ex).getTime() <= Date.now()) throw new Error('suspenso'); }
+    else { const uj = await ur.json().catch(() => ({})); accessExpiresAt = uj?.app_metadata?.expires_at || null; if (accessDeadline(accessExpiresAt).expired) throw new Error('suspenso'); }
     meuId = jwtSub(await token());
     const rowId = meuId === GIO_ID ? 'main' : meuId;
     LS = meuId === GIO_ID ? 'contas-do-mes-v1' : 'contas-do-mes-v1-' + meuId;
@@ -496,9 +505,57 @@ async function initStore(){
     dbDoc = null; if (meuId && meuId !== GIO_ID) { const local = loadLocal(); S = local || seedVazio(); } else { const local = loadLocal(); if (local) S = local; }
   }
   cur = mesInicial();
+  accessReady = true;
   render();
+  refreshAccess();
+  clearInterval(accessMonitor); accessMonitor = setInterval(refreshAccess, 60000);
 }
 function mesInicial(){ const ml = monthsList(), d = new Date(), hoje = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0'); return ml.find(m => m >= hoje) || ml[ml.length - 1]; }
+
+/* Prazo e notificações dentro do sistema: 7 dias, 24 horas e 1 hora. */
+function accessDeadline(expiresAt, now = Date.now()){
+  const end = expiresAt ? new Date(expiresAt).getTime() : NaN;
+  if (!Number.isFinite(end)) return {limited:false, expired:false, remaining:null, level:null};
+  const remaining = Math.max(0, end - now);
+  return {limited:true, expired:end <= now, remaining,
+    level:end <= now ? 'expired' : remaining <= 3600000 ? 'hour' : remaining <= 86400000 ? 'day' : remaining <= 604800000 ? 'week' : null};
+}
+function accessRemaining(ms){
+  const minutes = Math.ceil(ms / 60000), days = Math.floor(minutes / 1440), hours = Math.floor(minutes % 1440 / 60), mins = minutes % 60;
+  return [days ? `${days} dia${days === 1 ? '' : 's'}` : '', hours ? `${hours} hora${hours === 1 ? '' : 's'}` : '', mins ? `${mins} minuto${mins === 1 ? '' : 's'}` : ''].filter(Boolean).join(' e ') || 'menos de 1 minuto';
+}
+function accessWarnings(users, now = Date.now()){
+  return users.filter(u => !u.admin && !u.suspended && accessDeadline(u.expires_at, now).level && !accessDeadline(u.expires_at, now).expired)
+    .sort((a,b) => new Date(a.expires_at) - new Date(b.expires_at));
+}
+function accessNotices(){
+  if (!accessReady) return '';
+  if (isAdmin){
+    const warnings = accessWarnings(Array.isArray(adminUsers) ? adminUsers : []);
+    return warnings.length ? `<aside class="access-notice t-butter" role="status" aria-label="Notificações de vencimento"><strong>${ico('alert')}Acessos próximos do vencimento (${warnings.length})</strong><ul>${warnings.map(u => `<li>${esc(u.name || u.email)}: restam ${esc(accessRemaining(accessDeadline(u.expires_at).remaining))} — até ${esc(new Date(u.expires_at).toLocaleString('pt-BR'))}.</li>`).join('')}</ul><button class="btn ghost" data-tab="admin">Gerenciar prazos</button></aside>` : '';
+  }
+  const d = accessDeadline(accessExpiresAt);
+  return `<aside class="access-notice t-${d.level ? 'butter' : 'sky'}" role="status" aria-label="Prazo de utilização"><strong>${ico('time')}${d.limited ? `Tempo restante: ${esc(accessRemaining(d.remaining))}` : 'Acesso liberado pelo administrador: sem prazo'}</strong>${d.limited ? `<small>Prazo liberado pelo administrador até ${esc(new Date(accessExpiresAt).toLocaleString('pt-BR'))}.</small>` : ''}${d.level ? '<small>Seu acesso está próximo de terminar. Regularize o pagamento e solicite a renovação ao administrador para evitar a suspensão.</small>' : ''}</aside>`;
+}
+function updateAccessNotices(){ const slot = $('#access-notices'); if (slot) slot.innerHTML = accessNotices(); }
+async function refreshAccess(){
+  if (!accessReady || !sess || accessChecking) return;
+  if (!isAdmin && accessDeadline(accessExpiresAt).expired) return telaSuspenso();
+  accessChecking = true;
+  try {
+    const r = await fetch(CB+'/auth/v1/user', {headers:{apikey:CKEY, Authorization:'Bearer '+await token()}});
+    const u = await r.json().catch(() => ({}));
+    if (!r.ok){ if (u.error_code === 'user_banned' || /banned/i.test(u.msg || '')) return telaSuspenso(); if (r.status === 401 || r.status === 403) return telaLogin('Entre novamente para verificar seu acesso.'); return; }
+    accessExpiresAt = u.app_metadata?.expires_at || null;
+    if (!isAdmin && accessDeadline(accessExpiresAt).expired) return telaSuspenso();
+    if (isAdmin){ const d = await adminApi({action:'list'}); adminUsers = d.users; }
+    updateAccessNotices();
+    if (isAdmin && tab === 'admin' && $('#modal').hidden) render();
+  } catch (e) { if (e.message === 'suspenso') return telaSuspenso(); }
+  finally { accessChecking = false; }
+}
+document.addEventListener('visibilitychange', () => { if (!document.hidden) refreshAccess(); });
+window.addEventListener('focus', refreshAccess);
 
 /* ============================ cálculos ============================ */
 const monthsList = () => { const l = Array.from({length: S.count || 12}, (_, i) => ymAdd(S.start, i)).filter(m => !(S.hidden || []).includes(m)); return l.length ? l : [S.start]; };
@@ -577,6 +634,7 @@ function effTheme(){
   return document.documentElement.dataset.theme || (window.matchMedia && matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
 }
 function render(){
+  if (accessReady && !isAdmin && accessDeadline(accessExpiresAt).expired) return telaSuspenso();
   const app = $('#app'); if (!app) return;
   const ml = monthsList();
   const tabs = [['geral','home','Visão geral'],['receitas','in','Receitas'],['faturas','card','Faturas'],['compras','bag','Compras e parcelas'],['receber','users','A receber'],['tempo','time','Linha do tempo'],['ajustes','gear','Ajustes']];
@@ -595,6 +653,7 @@ function render(){
     </div>
     <div class="save" id="savestat"></div>
   </header>
+  <div id="access-notices">${accessNotices()}</div>
   <nav class="tabs" role="tablist" aria-label="Seções">
     ${tabs.map(([k, i, l]) => `<button class="tab" role="tab" data-tab="${k}" aria-selected="${tab === k}">${ico(i)}${l}</button>`).join('')}
   </nav>
