@@ -2,3 +2,7 @@
 - [x] Tempo de acesso restante no topo de cada perfil concedido.
 - [x] Orientação de regularização de pagamento na tela suspensa.
 - [x] Verificar testes e fluxo real de acesso com prazo.
+- [ ] Análise de compras planejadas com IA e dados isolados por conta.
+- [ ] Substituir marca e ícones pela imagem enviada.
+- [ ] Aba Patrimônio com instituições, saldos e cotação USD/BRL.
+- [ ] Testar cálculos, salvamento e análise na tela.
