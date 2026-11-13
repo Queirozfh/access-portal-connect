@@ -12,3 +12,4 @@
 - Keep month deletion reversible in the standalone financial HTML by retaining all records and tracking excluded months in state; revalidate settlement at confirmation so unpaid months cannot be excluded.
 - Derive receivables summaries from the shared monthly stats helper so the summary and person cards use the same purchase and payment attribution.
 - Each account's financial state is one app_state row keyed by its user id (the original owner keeps id 'main'); admin user management goes through /api/public/admin-users, which verifies the bearer and admin role before using the service client.
+- Derive in-app access warnings from verified auth expiry metadata and the protected admin list, refreshing every minute and on focus; never write reminders into financial state.

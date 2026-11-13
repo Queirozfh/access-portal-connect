@@ -1,0 +1,4 @@
+- [x] Avisos de vencimento dentro do sistema para administrador e usuários.
+- [x] Tempo de acesso restante no topo de cada perfil concedido.
+- [x] Orientação de regularização de pagamento na tela suspensa.
+- [x] Verificar testes e fluxo real de acesso com prazo.
