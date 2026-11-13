@@ -554,8 +554,6 @@ async function refreshAccess(){
   } catch (e) { if (e.message === 'suspenso') return telaSuspenso(); }
   finally { accessChecking = false; }
 }
-document.addEventListener('visibilitychange', () => { if (!document.hidden) refreshAccess(); });
-window.addEventListener('focus', refreshAccess);
 
 /* ============================ cálculos ============================ */
 const monthsList = () => { const l = Array.from({length: S.count || 12}, (_, i) => ymAdd(S.start, i)).filter(m => !(S.hidden || []).includes(m)); return l.length ? l : [S.start]; };
@@ -1314,6 +1312,8 @@ document.addEventListener('keydown', e => {
 });
 
 try { const t = localStorage.getItem('cdm-tema'); if (t === 'light' || t === 'dark') document.documentElement.dataset.theme = t; } catch (e) {}
+document.addEventListener('visibilitychange', () => { if (!document.hidden) refreshAccess(); });
+window.addEventListener('focus', refreshAccess);
 initStore();
 </script>
 </body>
