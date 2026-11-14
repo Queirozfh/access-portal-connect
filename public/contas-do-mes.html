@@ -1259,7 +1259,7 @@ function csv(){
 
 function blobDown(name, data, type){
   const u = URL.createObjectURL(new Blob([data], {type})), a = document.createElement('a');
-  a.href = u; a.download = name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(u), 2000);
+  a.href = u; a.download = name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(u), 30000);
 }
 function monthItems(m){ return S.purchases.filter(p => planAmt(p, m)).sort((a, b) => a.who.localeCompare(b.who) || a.desc.localeCompare(b.desc)); }
 function csvMes(m = cur){
