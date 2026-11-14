@@ -2,8 +2,10 @@
 - [x] Tempo de acesso restante no topo de cada perfil concedido.
 - [x] Orientação de regularização de pagamento na tela suspensa.
 - [x] Verificar testes e fluxo real de acesso com prazo.
-- [ ] Análise de compras planejadas com IA e dados isolados por conta.
-- [ ] Substituir marca e ícones pela imagem enviada.
-- [ ] Aba Patrimônio com instituições, saldos e cotação USD/BRL.
-- [ ] Testar cálculos, salvamento e análise na tela.
+- [x] Análise de compras planejadas com IA e dados isolados por conta.
+- [x] Substituir marca e ícones pela imagem enviada.
+- [x] Aba Patrimônio com instituições, saldos e cotação USD/BRL.
+- [x] Testar cálculos, salvamento e análise na tela.
 - [x] Aba Exportação com cópia completa e planilha de todos os dados do perfil; downloads conferidos na conta autenticada e tela verificada no celular.
+- [x] Substituir a experiência pelos arquivos Meu Patrimônio, preservando acessos e estado original.
+- [x] Verificar lançamento, leitura após recarregar, exportação e telas móveis da nova experiência.
