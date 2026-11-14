@@ -644,7 +644,7 @@ function render(){
   if (accessReady && !isAdmin && accessDeadline(accessExpiresAt).expired) return telaSuspenso();
   const app = $('#app'); if (!app) return;
   const ml = monthsList();
-  const tabs = [['geral','home','Visão geral'],['receitas','in','Receitas'],['faturas','card','Faturas'],['compras','bag','Compras e parcelas'],['receber','users','A receber'],['planejar','bag','Compra planejada'],['patrimonio','coin','Patrimônio'],['tempo','time','Linha do tempo'],['ajustes','gear','Ajustes']];
+  const tabs = [['geral','home','Visão geral'],['receitas','in','Receitas'],['faturas','card','Faturas'],['compras','bag','Compras e parcelas'],['receber','users','A receber'],['planejar','bag','Compra planejada'],['patrimonio','coin','Patrimônio'],['tempo','time','Linha do tempo'],['exportacao','down','Exportação'],['ajustes','gear','Ajustes']];
   if (isAdmin) tabs.push(['admin','users','Admin']);
   app.innerHTML = `
   <header class="top">
@@ -664,7 +664,7 @@ function render(){
   <nav class="tabs" role="tablist" aria-label="Seções">
     ${tabs.map(([k, i, l]) => `<button class="tab" role="tab" data-tab="${k}" aria-selected="${tab === k}">${ico(i)}${l}</button>`).join('')}
   </nav>
-  <main>${({geral, receitas: vReceitas, faturas: vFaturas, compras: vCompras, receber: vReceber, planejar: vPlanejar, patrimonio: vPatrimonio, tempo: vTempo, ajustes: vAjustes, admin: vAdmin})[tab]()}</main>`;
+  <main>${({geral, receitas: vReceitas, faturas: vFaturas, compras: vCompras, receber: vReceber, planejar: vPlanejar, patrimonio: vPatrimonio, tempo: vTempo, exportacao: vExportacao, ajustes: vAjustes, admin: vAdmin})[tab]()}</main>`;
   setStatus();
   const at=document.querySelector('.tab[aria-selected="true"]'); if(at&&document.documentElement.classList.contains('mobile')) at.scrollIntoView({inline:'center',block:'nearest'});
 }
@@ -1223,6 +1223,31 @@ function formRecv(who){
 async function saveFile(name, data, ok){
   try { await dl.save({filename: name, data}); toast(ok); } catch (e) { if (e && e.code !== 'declined') toast('Não foi possível salvar o arquivo.'); }
 }
+
+function exportRows(state){
+  const rows=[['Seção','Registro','Campo','Valor']];
+  Object.entries(state).forEach(([section,value])=>{
+    if(Array.isArray(value))value.forEach((record,i)=>{
+      if(record && typeof record==='object')Object.entries(record).forEach(([key,v])=>rows.push([section,i+1,key,typeof v==='object'?JSON.stringify(v):v]));
+      else rows.push([section,i+1,'valor',record]);
+    });
+    else if(value && typeof value==='object')Object.entries(value).forEach(([key,v])=>rows.push([section,'',key,typeof v==='object'?JSON.stringify(v):v]));
+    else rows.push(['Perfil','',section,value]);
+  });
+  return rows;
+}
+function csvCompleto(state=S){
+  const cell=v=>{let text=String(v??'');if(/^[\s]*[=+@-]/.test(text)&&typeof v!=='number')text="'"+text;return '"'+text.replace(/"/g,'""')+'"';};
+  return '\uFEFF'+exportRows(state).map(row=>row.map(cell).join(';')).join('\r\n');
+}
+function vExportacao(){
+  return `<section class="panel">${head('sky','down','Exportação','Dados do perfil de '+esc(S.titular))}
+    <div class="two"><div><h3>Cópia completa</h3><p class="note">Perfil, configurações, receitas, faturas, compras, parcelas, pessoas, categorias, recebimentos, meses excluídos, instituições, saldos e cotação.</p><button class="btn primary" data-act="export-all-json">${ico('down')}Baixar cópia completa (JSON)</button></div>
+    <div><h3>Planilha completa</h3><p class="note">Todos os registros e campos, em formato compatível com Excel.</p><button class="btn" data-act="export-all-csv">${ico('down')}Baixar planilha completa (CSV)</button></div></div>
+    <p class="note">Somente os dados deste perfil são exportados. Senhas e sessões de acesso não são incluídas. A cópia JSON pode ser restaurada em Ajustes.</p>
+    </section><section class="panel">${head('mint','time','Relatório do mês',esc(mLong(cur)))}<div class="portfolio-actions"><button class="btn" data-act="exp-mes-pdf">${ico('down')}Imprimir / salvar PDF do mês</button><button class="btn" data-act="exp-mes-csv">${ico('down')}Planilha do mês (CSV)</button></div></section>`;
+}
+
 function csv(){
   const ml = monthsList(), q = v => '"' + String(v).replace(/"/g, '""') + '"', n = v => String(r2(v)).replace('.', ',');
   const L = [['Mês','Receitas','Faturas','Terceiros devolvem','Sua parte','Resultado'].map(q).join(';')];
@@ -1350,6 +1375,8 @@ document.addEventListener('click', e => {
       }, 'Excluir', 'Você poderá restaurar este mês com todos os dados em Ajustes.'); break; }
     case 'restore-month': if (restaurarMes(t.dataset.m)) { persist(); render(); toast('Mês restaurado com todos os dados.'); } break;
     case 'add-cat': openForm({title:'Nova categoria', fields:[{name:'name', label:'Nome', type:'text'}], validate: v => !v.name ? 'Escreva o nome.' : S.cats.includes(v.name) ? 'Essa categoria já existe.' : '', onSave: v => S.cats.push(v.name)}); break;
+    case 'export-all-json': blobDown('contas-copia-completa.json',JSON.stringify(S,null,2),'application/json');break;
+    case 'export-all-csv': blobDown('contas-planilha-completa.csv',csvCompleto(),'text/csv;charset=utf-8');break;
     case 'exp-mes-csv': blobDown(`resumo-${cur}.csv`, csvMes(cur), 'text/csv;charset=utf-8'); toast('Planilha do mês baixada.'); break;
     case 'exp-mes-pdf': pdfMes(cur); break;
     case 'exp-csv': saveFile('controle-financeiro.csv', csv(), 'Resumo exportado.'); break;
