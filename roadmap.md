@@ -6,3 +6,4 @@
 - [ ] Substituir marca e ícones pela imagem enviada.
 - [ ] Aba Patrimônio com instituições, saldos e cotação USD/BRL.
 - [ ] Testar cálculos, salvamento e análise na tela.
+- [x] Aba Exportação com cópia completa e planilha de todos os dados do perfil; downloads conferidos na conta autenticada e tela verificada no celular.
