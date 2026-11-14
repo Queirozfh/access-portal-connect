@@ -57,7 +57,7 @@ export const Route = createFileRoute('/api/public/planned-purchase')({
           }
         } catch (err) { if (!request.signal.aborted) controller.enqueue(line({ error: failure(err).message })); }
         finally { controller.close(); }
-      }, cancel: () => iterator.return?.(),
+      }, cancel: async () => { await iterator.return?.(); },
     }), { headers: { 'Content-Type': 'application/x-ndjson', 'Cache-Control': 'no-cache, no-transform' } });
   } } },
 });
