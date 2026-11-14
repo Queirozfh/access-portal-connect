@@ -15,3 +15,4 @@
 - Derive in-app access warnings from verified auth expiry metadata and the protected admin list, refreshing every minute and on focus; never write reminders into financial state.
 - Keep portfolio balances and exchange-rate snapshots inside each account's existing state; daily reference quotes are not real-time market prices.
 - Planned-purchase analysis reads caller-scoped persisted records, calculates amounts deterministically without double-counting bills, and streams AI commentary through a bearer-verified server route; it never creates purchases automatically.
+- Complete exports serialize only the current account's financial state, never auth credentials or other accounts; CSV neutralizes spreadsheet formulas to keep exported text safe.
