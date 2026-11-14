@@ -3,98 +3,98 @@
     "capability": "code",
     "source": "meu-patrimonio-implantacao.zip",
     "outcome": "Inspect and adapt uploaded application",
-    "status": "pending",
-    "next_action": "Implement and verify"
+    "status": "verified",
+    "next_action": "None"
   },
   {
     "capability": "schema",
     "source": "meu-patrimonio-implantacao.zip",
     "outcome": "Preserve existing Lovable Cloud accounts and per-account app_state",
-    "status": "pending",
-    "next_action": "Implement and verify"
+    "status": "verified",
+    "next_action": "None"
   },
   {
     "capability": "records",
     "source": "meu-patrimonio-implantacao.zip",
     "outcome": "Preserve existing Lovable Cloud accounts and per-account app_state",
-    "status": "pending",
-    "next_action": "Implement and verify"
+    "status": "verified",
+    "next_action": "None"
   },
   {
     "capability": "auth identities",
     "source": "meu-patrimonio-implantacao.zip",
     "outcome": "Preserve existing Lovable Cloud accounts and per-account app_state",
-    "status": "pending",
-    "next_action": "Implement and verify"
+    "status": "verified",
+    "next_action": "None"
   },
   {
     "capability": "authorization",
     "source": "meu-patrimonio-implantacao.zip",
     "outcome": "Preserve existing Lovable Cloud accounts and per-account app_state",
-    "status": "pending",
-    "next_action": "Implement and verify"
+    "status": "verified",
+    "next_action": "None"
   },
   {
     "capability": "uploaded file bytes",
     "source": "meu-patrimonio-implantacao.zip",
-    "outcome": "Inspect and adapt uploaded application",
-    "status": "pending",
-    "next_action": "Implement and verify"
+    "outcome": "Not present in source",
+    "status": "accepted",
+    "next_action": "None"
   },
   {
     "capability": "external providers",
     "source": "meu-patrimonio-implantacao.zip",
     "outcome": "Inspect and adapt uploaded application",
-    "status": "pending",
-    "next_action": "Implement and verify"
+    "status": "verified",
+    "next_action": "None"
   },
   {
     "capability": "public endpoints",
     "source": "meu-patrimonio-implantacao.zip",
     "outcome": "Inspect and adapt uploaded application",
-    "status": "pending",
-    "next_action": "Implement and verify"
+    "status": "verified",
+    "next_action": "None"
   },
   {
     "capability": "callbacks",
     "source": "meu-patrimonio-implantacao.zip",
-    "outcome": "Inspect and adapt uploaded application",
-    "status": "pending",
-    "next_action": "Implement and verify"
+    "outcome": "Not present in source",
+    "status": "accepted",
+    "next_action": "None"
   },
   {
     "capability": "webhooks",
     "source": "meu-patrimonio-implantacao.zip",
-    "outcome": "Inspect and adapt uploaded application",
-    "status": "pending",
-    "next_action": "Implement and verify"
+    "outcome": "Not present in source",
+    "status": "accepted",
+    "next_action": "None"
   },
   {
     "capability": "schedules",
     "source": "meu-patrimonio-implantacao.zip",
-    "outcome": "Inspect and adapt uploaded application",
-    "status": "pending",
-    "next_action": "Implement and verify"
+    "outcome": "Not present in source",
+    "status": "accepted",
+    "next_action": "None"
   },
   {
     "capability": "secrets",
     "source": "meu-patrimonio-implantacao.zip",
     "outcome": "Inspect and adapt uploaded application",
-    "status": "pending",
-    "next_action": "Implement and verify"
+    "status": "verified",
+    "next_action": "None"
   },
   {
     "capability": "cutover",
     "source": "meu-patrimonio-implantacao.zip",
-    "outcome": "Inspect and adapt uploaded application",
-    "status": "pending",
-    "next_action": "Implement and verify"
+    "outcome": "Root and old address open Meu Patrim\u00f4nio; publishing required for public site",
+    "status": "accepted",
+    "next_action": "None"
   },
   {
     "capability": "verification",
     "source": "meu-patrimonio-implantacao.zip",
     "outcome": "Inspect and adapt uploaded application",
-    "status": "pending",
-    "next_action": "Implement and verify"
+    "status": "verified",
+    "next_action": "None"
   }
 ]
