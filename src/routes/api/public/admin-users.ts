@@ -60,7 +60,13 @@ export const Route = createFileRoute("/api/public/admin-users")({
             for (const r of rows || []) {
               try {
                 const st = JSON.parse(r.json);
-                names[r.id] = st.titular || "";
+                const current = st.patrimonioApp || st;
+                names[r.id] = current.settings?.ownerName || st.titular || "";
+                if (Array.isArray(current.items)) {
+                  const month = new Date().toISOString().slice(0, 7);
+                  stats[r.id] = { total: current.items.length + (current.bills?.length || 0) + (current.reimbursements?.length || 0), ativos: current.items.filter((item: {month?: string; due?: string; recurring?: boolean}) => item.month === month || item.due === month || (item.recurring && (item.month || '') <= month)).length, updated_at: r.updated_at };
+                  continue;
+                }
                 const ps: { start?: string; n?: number | null }[] = Array.isArray(st.purchases) ? st.purchases : [];
                 const inc: { start?: string; n?: number | null }[] = Array.isArray(st.incomes) ? st.incomes : [];
                 const on = (p: { start?: string; n?: number | null }) => { const i = ym - toN(p.start || ""); return i >= 0 && (p.n == null || i < p.n); };
@@ -89,6 +95,14 @@ export const Route = createFileRoute("/api/public/admin-users")({
             if (!id || id === adminId || !name) return json({ error: "Informe um nome." }, 400);
             const st = (await readState(id)) || JSON.parse(blank(name));
             st.titular = name;
+            const current = st.patrimonioApp || st;
+            if (current.settings) {
+              const previous = current.settings.ownerName;
+              current.settings.ownerName = name;
+              current.people = (current.people || []).map((person: string) => person === previous ? name : person);
+              current.peopleInBill = (current.peopleInBill || []).map((person: string) => person === previous ? name : person);
+              for (const item of current.items || []) if (item.person === previous) item.person = name;
+            }
             const { error } = await writeState(id, JSON.stringify(st));
             if (error) return json({ error: error.message }, 400);
             return json({ ok: true });
