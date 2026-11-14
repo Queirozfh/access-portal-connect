@@ -1420,7 +1420,7 @@ document.addEventListener('keydown', e => {
 try { const t = localStorage.getItem('cdm-tema'); if (t === 'light' || t === 'dark') document.documentElement.dataset.theme = t; } catch (e) {}
 document.addEventListener('visibilitychange', () => { if (!document.hidden) refreshAccess(); });
 window.addEventListener('focus', refreshAccess);
-initStore();
+location.replace('/meu-patrimonio/index.html');
 </script>
 </body>
 </html>

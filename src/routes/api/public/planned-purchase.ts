@@ -1,6 +1,7 @@
 import { createFileRoute } from '@tanstack/react-router';
 import { portalAuth } from '@/lib/portal-auth.server';
-import { estimatePurchase, financialStateSchema, plannedPurchaseSchema } from '@/lib/financial-analysis';
+import { estimatePurchase, plannedPurchaseSchema } from '@/lib/financial-analysis';
+import { analysisState } from '@/lib/patrimonio-state';
 import { createResponsesCall } from '@/lib/ai/responses.server';
 
 const json = (body: unknown, status = 200) => Response.json(body, { status });
@@ -14,7 +15,7 @@ export const Route = createFileRoute('/api/public/planned-purchase')({
     const { data, error } = await auth.client.from('app_state').select('json').eq('id', id).maybeSingle();
     if (error || !data) return json({ error: 'Salve seus lançamentos online antes de analisar.' }, 400);
     let state;
-    try { state = financialStateSchema.parse(JSON.parse(data.json)); }
+    try { state = analysisState(JSON.parse(data.json)); }
     catch { return json({ error: 'Não foi possível ler os lançamentos dessa conta.' }, 400); }
     if (![state.titular, ...state.people.map(p => p.name)].includes(parsed.data.person)) return json({ error: 'Pessoa não cadastrada nesta conta.' }, 400);
     const key = process.env['LOVABLE_API_KEY'];
