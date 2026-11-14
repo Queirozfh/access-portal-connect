@@ -9,3 +9,4 @@
 - [x] Aba Exportação com cópia completa e planilha de todos os dados do perfil; downloads conferidos na conta autenticada e tela verificada no celular.
 - [x] Substituir a experiência pelos arquivos Meu Patrimônio, preservando acessos e estado original.
 - [x] Verificar lançamento, leitura após recarregar, exportação e telas móveis da nova experiência.
+- [x] Restaurar a localização das funcionalidades conforme o pacote enviado e verificar as abas autenticadas.
