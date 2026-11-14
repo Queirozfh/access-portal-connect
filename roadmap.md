@@ -7,3 +7,5 @@
 - [ ] Aba Patrimônio com instituições, saldos e cotação USD/BRL.
 - [ ] Testar cálculos, salvamento e análise na tela.
 - [x] Aba Exportação com cópia completa e planilha de todos os dados do perfil; downloads conferidos na conta autenticada e tela verificada no celular.
+- [ ] Substituir a experiência pelos arquivos Meu Patrimônio, preservando acessos e estado original.
+- [ ] Verificar lançamento, leitura após recarregar, exportação e telas móveis da nova experiência.
