@@ -1,0 +1,100 @@
+[
+  {
+    "capability": "code",
+    "source": "meu-patrimonio-implantacao.zip",
+    "outcome": "Inspect and adapt uploaded application",
+    "status": "pending",
+    "next_action": "Implement and verify"
+  },
+  {
+    "capability": "schema",
+    "source": "meu-patrimonio-implantacao.zip",
+    "outcome": "Preserve existing Lovable Cloud accounts and per-account app_state",
+    "status": "pending",
+    "next_action": "Implement and verify"
+  },
+  {
+    "capability": "records",
+    "source": "meu-patrimonio-implantacao.zip",
+    "outcome": "Preserve existing Lovable Cloud accounts and per-account app_state",
+    "status": "pending",
+    "next_action": "Implement and verify"
+  },
+  {
+    "capability": "auth identities",
+    "source": "meu-patrimonio-implantacao.zip",
+    "outcome": "Preserve existing Lovable Cloud accounts and per-account app_state",
+    "status": "pending",
+    "next_action": "Implement and verify"
+  },
+  {
+    "capability": "authorization",
+    "source": "meu-patrimonio-implantacao.zip",
+    "outcome": "Preserve existing Lovable Cloud accounts and per-account app_state",
+    "status": "pending",
+    "next_action": "Implement and verify"
+  },
+  {
+    "capability": "uploaded file bytes",
+    "source": "meu-patrimonio-implantacao.zip",
+    "outcome": "Inspect and adapt uploaded application",
+    "status": "pending",
+    "next_action": "Implement and verify"
+  },
+  {
+    "capability": "external providers",
+    "source": "meu-patrimonio-implantacao.zip",
+    "outcome": "Inspect and adapt uploaded application",
+    "status": "pending",
+    "next_action": "Implement and verify"
+  },
+  {
+    "capability": "public endpoints",
+    "source": "meu-patrimonio-implantacao.zip",
+    "outcome": "Inspect and adapt uploaded application",
+    "status": "pending",
+    "next_action": "Implement and verify"
+  },
+  {
+    "capability": "callbacks",
+    "source": "meu-patrimonio-implantacao.zip",
+    "outcome": "Inspect and adapt uploaded application",
+    "status": "pending",
+    "next_action": "Implement and verify"
+  },
+  {
+    "capability": "webhooks",
+    "source": "meu-patrimonio-implantacao.zip",
+    "outcome": "Inspect and adapt uploaded application",
+    "status": "pending",
+    "next_action": "Implement and verify"
+  },
+  {
+    "capability": "schedules",
+    "source": "meu-patrimonio-implantacao.zip",
+    "outcome": "Inspect and adapt uploaded application",
+    "status": "pending",
+    "next_action": "Implement and verify"
+  },
+  {
+    "capability": "secrets",
+    "source": "meu-patrimonio-implantacao.zip",
+    "outcome": "Inspect and adapt uploaded application",
+    "status": "pending",
+    "next_action": "Implement and verify"
+  },
+  {
+    "capability": "cutover",
+    "source": "meu-patrimonio-implantacao.zip",
+    "outcome": "Inspect and adapt uploaded application",
+    "status": "pending",
+    "next_action": "Implement and verify"
+  },
+  {
+    "capability": "verification",
+    "source": "meu-patrimonio-implantacao.zip",
+    "outcome": "Inspect and adapt uploaded application",
+    "status": "pending",
+    "next_action": "Implement and verify"
+  }
+]
