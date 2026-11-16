@@ -28,8 +28,8 @@ function financingSchedule(r){
   }
   return rows;
 }
-root.solveFinancing=solveFinancing;
-if(typeof module!=='undefined')module.exports={solveFinancing:solveFinancing};
+root.solveFinancing=solveFinancing;root.financingSchedule=financingSchedule;
+if(typeof module!=='undefined')module.exports={solveFinancing:solveFinancing,financingSchedule:financingSchedule};
 if(typeof document==='undefined'||typeof planPage!=='function')return;
 var nf=function(v,d){return Number(v).toLocaleString('pt-BR',{minimumFractionDigits:d,maximumFractionDigits:d})};
 var parse=function(s){s=String(s||'').trim();if(!s)return null;s=s.replace(/\s|R\$|%/g,'');if(s.indexOf(',')>=0)s=s.replace(/\./g,'').replace(',','.');var v=Number(s);return isFinite(v)?v:NaN};
