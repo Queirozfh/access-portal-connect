@@ -12,7 +12,7 @@ function solveFinancing(f){
   if(m==='n'){if(i===0)n=v/p;else{var x=1-v*i/p;if(x<=0)throw new Error('A prestação não cobre os juros: o financiamento nunca seria quitado.');n=-Math.log(x)/Math.log(1+i)}}
   if(m==='rate'){if(p*n<v)throw new Error('O total das prestações é menor que o valor financiado.');
     if(Math.abs(p*n-v)<1e-9)i=0;else{var lo=0,hi=1;while(pv(n,hi,p)>v)hi*=2;for(var k=0;k<200;k++){var mid=(lo+hi)/2;if(pv(n,mid,p)>v)lo=mid;else hi=mid}i=(lo+hi)/2}}
-  var total=p*n;
+  if(m==='n')n=Math.round(n*100)/100;var total=p*n;
   return{n:n,rate:i*100,payment:p,principal:v,total:total,interest:total-v,annualRate:(Math.pow(1+i,12)-1)*100,solved:m};
 }
 root.solveFinancing=solveFinancing;
