@@ -18,7 +18,7 @@ describe('Financiamento veicular', () => {
   });
   it('gera a evolução mês a mês até zerar o saldo', () => {
     const r = solveFinancing({ n: 48, rate: 2.40789, principal: 48012.35 });
-    const rows = financingSchedule(r);
+    const rows = financingSchedule(r) as { month: number; payment: number; interest: number; amortization: number; balance: number }[];
     expect(rows).toHaveLength(48);
     expect(rows[0]).toMatchObject({ month: 1 });
     expect(rows[0]!.interest).toBeCloseTo(48012.35 * 0.0240789, 2);
