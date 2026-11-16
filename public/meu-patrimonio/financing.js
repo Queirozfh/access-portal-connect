@@ -15,6 +15,19 @@ function solveFinancing(f){
   if(m==='n')n=Math.round(n*100)/100;var total=p*n;
   return{n:n,rate:i*100,payment:p,principal:v,total:total,interest:total-v,annualRate:(Math.pow(1+i,12)-1)*100,solved:m};
 }
+/* Evolução mês a mês (Tabela Price): prestação, juros, amortização e saldo devedor. */
+function financingSchedule(r){
+  var i=r.rate/100,balance=r.principal,rows=[],months=Math.ceil(r.n-1e-9);
+  for(var k=1;k<=months;k++){
+    var interest=balance*i,amort=r.payment-interest;
+    if(k===months&&Math.abs(r.n-Math.round(r.n))>1e-9){amort=balance}
+    var pay=k===months?interest+amort:r.payment;
+    balance=Math.max(0,balance-amort);
+    rows.push({month:k,payment:pay,interest:interest,amortization:amort,balance:balance});
+    if(balance<=0)break;
+  }
+  return rows;
+}
 root.solveFinancing=solveFinancing;
 if(typeof module!=='undefined')module.exports={solveFinancing:solveFinancing};
 if(typeof document==='undefined'||typeof planPage!=='function')return;
