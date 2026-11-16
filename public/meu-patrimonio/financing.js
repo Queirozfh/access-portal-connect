@@ -38,9 +38,12 @@ var fields=[['finN','Nº de meses',''],['finRate','Taxa de juros mensal (%)','']
 planPage=function(){return basePlan()+'<section class="card" style="margin-top:16px"><div class="section-head"><div><h2>Financiamento veicular</h2><p>Prestações fixas (Tabela Price). Preencha 3 campos e deixe em branco o que deseja descobrir.</p></div></div><form id="finForm"><div class="form-grid">'+fields.map(function(f){return '<div class="field"><label for="'+f[0]+'">'+f[1]+'</label><input id="'+f[0]+'" inputmode="decimal" autocomplete="off">'+(f[2]?'<small style="opacity:.7">'+f[2]+'</small>':'')+'</div>'}).join('')+'</div><div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn primary">Calcular</button><button type="button" class="btn secondary" id="finReport">Relatório</button><button type="button" class="btn secondary" id="finClear">Limpar</button></div></form><div id="finResult" style="margin-top:14px"></div><div id="finReportOut" style="margin-top:14px"></div></section>'};
 bindPage=function(){baseBind();var form=document.getElementById('finForm');if(!form)return;var ids=['finN','finRate','finPayment','finPrincipal'],out=document.getElementById('finResult'),report=document.getElementById('finReportOut');
   document.getElementById('finClear').onclick=function(){ids.forEach(function(id){document.getElementById(id).value=''});out.innerHTML='';report.innerHTML=''};
+  var lastSolved=null;ids.forEach(function(id,ix){document.getElementById(id).addEventListener('input',function(){if(lastSolved===['n','rate','payment','principal'][ix])lastSolved=null})});
   var solve=function(){var v=ids.map(function(id){return parse(document.getElementById(id).value)});
     if(v.some(function(x){return Number.isNaN(x)}))throw new Error('Há um número inválido.');
-    return solveFinancing({n:v[0],rate:v[1],payment:v[2],principal:v[3]})};
+    var keys=['n','rate','payment','principal'];
+    if(v.every(function(x){return x!=null&&isFinite(x)})){var k=keys.indexOf(lastSolved);v[k<0?3:k]=null}
+    var r=solveFinancing({n:v[0],rate:v[1],payment:v[2],principal:v[3]});lastSolved=r.solved;return r};
   var fill=function(r){document.getElementById('finN').value=nf(r.n,2);document.getElementById('finRate').value=nf(r.rate,6);document.getElementById('finPayment').value=nf(r.payment,2);document.getElementById('finPrincipal').value=nf(r.principal,2)};
   form.onsubmit=function(e){e.preventDefault();
     try{var r=solve();fill(r);report.innerHTML='';
