@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { createRequire } from 'module';
-const { solveFinancing } = createRequire(import.meta.url)('../../public/meu-patrimonio/financing.js');
+import '../../public/meu-patrimonio/financing.js';
+const solveFinancing = (globalThis as any).solveFinancing;
 describe('Financiamento veicular', () => {
   it('calcula a prestação (planilha: 2,40789% a.m., 48x, 48.012,35)', () => {
     expect(solveFinancing({ n: 48, rate: 2.40789, principal: 48012.35 }).payment).toBeCloseTo(1690.8, 0);
