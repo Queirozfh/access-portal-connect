@@ -88,6 +88,7 @@ bindPage=function(){baseBind();var form=document.getElementById('finForm');if(!f
           +'<h1>Resultado da análise — Financiamento veicular</h1><p class="note">Recomendações são estimativas, não aconselhamento financeiro.</p>'
           +'<p>Financiamento de <strong>'+nf(r.n,2)+'</strong> parcelas de <strong>R$ '+nf(r.payment,2)+'</strong>: total de <strong>R$ '+nf(r.total,2)+'</strong>, sendo <strong>R$ '+nf(r.interest,2)+'</strong> de juros. Taxa: '+nf(r.rate,6)+'% a.m. ('+nf(r.annualRate,2)+'% a.a.). Valor financiado: R$ '+nf(r.principal,2)+'.</p>'
           +'<table><thead><tr><th>Mês</th><th>Prestação</th><th>Juros</th><th>Amortização</th><th>Saldo devedor</th></tr></thead><tbody>'+body+'</tbody></table>'
+          +(advText?'<h2 style="font-size:15px">Pagamento antecipado de parcela</h2><p>'+advText+'</p><p class="note">Estimativa pelo deságio financeiro à taxa do contrato; confirme o valor com o banco, que pode aplicar tarifas.</p>':'')
           +'</body></html>');
         w.document.close();w.focus();w.print();
       };
