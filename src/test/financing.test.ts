@@ -28,4 +28,20 @@ describe('Financiamento veicular', () => {
     const totalPaid = rows.reduce((s, row) => s + row.payment, 0);
     expect(totalPaid).toBeCloseTo(r.total, 0);
   });
+  describe('pagamento antecipado (deságio)', () => {
+    it('traz a última parcela a valor presente no 1º mês (2% a.m., 47 meses)', () => {
+      const d = discountToPresent(1200, 2, 47);
+      expect(d.present).toBeCloseTo(473.12, 2);
+      expect(d.discount).toBeCloseTo(1200 - 473.12, 2);
+    });
+    it('sem antecipação não há desconto', () => {
+      const d = discountToPresent(1500, 2, 0);
+      expect(d.present).toBeCloseTo(1500, 6);
+      expect(d.discount).toBeCloseTo(0, 6);
+    });
+    it('rejeita valores inválidos', () => {
+      expect(() => discountToPresent(-100, 2, 10)).toThrow();
+      expect(() => discountToPresent(100, -1, 10)).toThrow();
+    });
+  });
 });
