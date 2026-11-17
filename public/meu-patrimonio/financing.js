@@ -28,8 +28,15 @@ function financingSchedule(r){
   }
   return rows;
 }
-root.solveFinancing=solveFinancing;root.financingSchedule=financingSchedule;
-if(typeof module!=='undefined')module.exports={solveFinancing:solveFinancing,financingSchedule:financingSchedule};
+/* Pagamento antecipado de uma parcela (deságio): valor presente da prestação
+   trazida "monthsAhead" meses antes do vencimento, à taxa do contrato. */
+function discountToPresent(payment,ratePct,monthsAhead){
+  if(!(payment>0)||!(ratePct>=0)||!(monthsAhead>=0))throw new Error('Use valores positivos.');
+  var i=ratePct/100,present=payment/Math.pow(1+i,monthsAhead);
+  return{present:present,discount:payment-present,monthsAhead:monthsAhead};
+}
+root.solveFinancing=solveFinancing;root.financingSchedule=financingSchedule;root.discountToPresent=discountToPresent;
+if(typeof module!=='undefined')module.exports={solveFinancing:solveFinancing,financingSchedule:financingSchedule,discountToPresent:discountToPresent};
 if(typeof document==='undefined'||typeof planPage!=='function')return;
 var nf=function(v,d){return Number(v).toLocaleString('pt-BR',{minimumFractionDigits:d,maximumFractionDigits:d})};
 var parse=function(s){s=String(s||'').trim();if(!s)return null;s=s.replace(/\s|R\$|%/g,'');if(s.indexOf(',')>=0)s=s.replace(/\./g,'').replace(',','.');var v=Number(s);return isFinite(v)?v:NaN};
