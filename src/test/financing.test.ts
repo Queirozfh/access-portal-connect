@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import '../../public/meu-patrimonio/financing.js';
 const solveFinancing = (globalThis as any).solveFinancing;
 const financingSchedule = (globalThis as any).financingSchedule;
+const discountToPresent = (globalThis as any).discountToPresent;
 describe('Financiamento veicular', () => {
   it('calcula a prestação (planilha: 2,40789% a.m., 48x, 48.012,35)', () => {
     expect(solveFinancing({ n: 48, rate: 2.40789, principal: 48012.35 }).payment).toBeCloseTo(1698.0, 1);
@@ -26,5 +27,21 @@ describe('Financiamento veicular', () => {
     expect(rows[47]!.balance).toBeCloseTo(0, 2);
     const totalPaid = rows.reduce((s, row) => s + row.payment, 0);
     expect(totalPaid).toBeCloseTo(r.total, 0);
+  });
+  describe('pagamento antecipado (deságio)', () => {
+    it('traz a última parcela a valor presente no 1º mês (2% a.m., 47 meses)', () => {
+      const d = discountToPresent(1200, 2, 47);
+      expect(d.present).toBeCloseTo(473.12, 2);
+      expect(d.discount).toBeCloseTo(1200 - 473.12, 2);
+    });
+    it('sem antecipação não há desconto', () => {
+      const d = discountToPresent(1500, 2, 0);
+      expect(d.present).toBeCloseTo(1500, 6);
+      expect(d.discount).toBeCloseTo(0, 6);
+    });
+    it('rejeita valores inválidos', () => {
+      expect(() => discountToPresent(-100, 2, 10)).toThrow();
+      expect(() => discountToPresent(100, -1, 10)).toThrow();
+    });
   });
 });
