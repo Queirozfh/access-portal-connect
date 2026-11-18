@@ -14,6 +14,39 @@ export type Database = {
   }
   public: {
     Tables: {
+      ai_account_access: {
+        Row: {
+          enabled: boolean
+          user_id: string
+        }
+        Insert: {
+          enabled?: boolean
+          user_id: string
+        }
+        Update: {
+          enabled?: boolean
+          user_id?: string
+        }
+        Relationships: []
+      }
+      ai_monthly_usage: {
+        Row: {
+          month: string
+          used: number
+          user_id: string
+        }
+        Insert: {
+          month: string
+          used?: number
+          user_id: string
+        }
+        Update: {
+          month?: string
+          used?: number
+          user_id?: string
+        }
+        Relationships: []
+      }
       app_state: {
         Row: {
           id: string
@@ -29,6 +62,30 @@ export type Database = {
           id?: string
           json?: string
           updated_at?: string
+        }
+        Relationships: []
+      }
+      app_state_history: {
+        Row: {
+          account_id: string
+          archived_at: string
+          id: number
+          json: string
+          saved_at: string
+        }
+        Insert: {
+          account_id: string
+          archived_at?: string
+          id?: never
+          json: string
+          saved_at: string
+        }
+        Update: {
+          account_id?: string
+          archived_at?: string
+          id?: never
+          json?: string
+          saved_at?: string
         }
         Relationships: []
       }
@@ -60,6 +117,11 @@ export type Database = {
           _role: Database["public"]["Enums"]["app_role"]
           _user_id: string
         }
+        Returns: boolean
+      }
+      reserve_ai_use: { Args: { p_user_id: string }; Returns: Json }
+      restore_financial_state: {
+        Args: { p_history_id: number }
         Returns: boolean
       }
     }

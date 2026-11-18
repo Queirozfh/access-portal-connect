@@ -36,6 +36,13 @@
       "when": 1794494594872,
       "tag": "0004_access_expiry",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1794971153535,
+      "tag": "0005_ai_monthly_quota_and_saved_history",
+      "breakpoints": true
     }
   ]
 }
