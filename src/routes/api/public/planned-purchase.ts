@@ -20,6 +20,11 @@ export const Route = createFileRoute('/api/public/planned-purchase')({
     if (![state.titular, ...state.people.map(p => p.name)].includes(parsed.data.person)) return json({ error: 'Pessoa não cadastrada nesta conta.' }, 400);
     const key = process.env['LOVABLE_API_KEY'];
     if (!key) return json({ error: 'Lovable AI não está configurada.' }, 401);
+    const { supabaseAdmin } = await import('@/integrations/supabase/client.server');
+    const reservation = await supabaseAdmin.rpc('reserve_ai_use', { p_user_id: auth.userId });
+    if (reservation.error) return json({ error: 'Não foi possível verificar o limite de IA.' }, 503);
+    const quota = reservation.data as { allowed?: boolean; reason?: string; used?: number } | null;
+    if (!quota?.allowed) return json({ error: quota?.reason === 'disabled' ? 'O administrador desativou a IA para este acesso.' : 'Você utilizou as 4 análises deste mês. O limite será renovado no dia 1º, horário de Fortaleza.' }, 403);
     const estimate = estimatePurchase(state, parsed.data);
     const categories = Object.fromEntries(state.cats.map(cat => [cat, state.purchases.filter(p => p.cat === cat).length]));
     const { result } = createResponsesCall(request,

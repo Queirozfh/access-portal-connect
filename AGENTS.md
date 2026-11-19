@@ -18,3 +18,6 @@
 - Complete exports serialize only the current account's financial state, never auth credentials or other accounts; CSV neutralizes spreadsheet formulas to keep exported text safe.
 - Serve the imported finance interface from public/meu-patrimonio with a Cloud bridge; do not deploy the source Node filesystem/session server because hosting is Worker-based.
 - Preserve original legacy state fields and store converted edits in patrimonioApp in the same account row; analysis and admin metrics must prefer that current state so historical records remain recoverable.
+- Reserve AI requests atomically in a service-only database function after caller validation; calendar months use America/Fortaleza, non-admin quotas apply even under concurrency, and permissions stay outside financial state.
+- Archive changed app_state values via a database trigger with seven prior versions per account; restore under a row lock and preserve the displaced state so recovery does not depend on a browser or polling.
+- Store card definitions and item card IDs in each account's current financial state; compute global commitments from unpaid dated items without adding bills a second time or projecting infinite subscriptions.

@@ -10,8 +10,8 @@
 - [x] Substituir a experiência pelos arquivos Meu Patrimônio, preservando acessos e estado original.
 - [x] Verificar lançamento, leitura após recarregar, exportação e telas móveis da nova experiência.
 - [x] Restaurar a localização das funcionalidades conforme o pacote enviado e verificar as abas autenticadas.
-- [ ] Permitir retornar itens pagos ao status pendente.
-- [ ] Controle de permissão de IA por e-mail e quatro usos mensais por usuário, com contagem no Admin (aguarda confirmação do controle próprio).
-- [ ] Cobrança mensal por pessoa via WhatsApp, com itens, saldo e chave Pix configurável.
-- [ ] Múltiplos cartões com limites, fechamento, vencimento e comprometimento por parcelas futuras.
-- [ ] Histórico de segurança isolado por perfil e restauração (aguarda definição entre sete salvamentos e sete dias).
+- [x] Permitir retornar itens pagos ao status pendente; persistência após recarga verificada.
+- [x] Controle de permissão de IA por e-mail e quatro usos mensais por usuário, renovados no dia 1º em Fortaleza; bloqueio direto e contagem no Admin verificados.
+- [x] Cobrança mensal por pessoa via WhatsApp, com itens, saldo parcial e chave Pix configurável; mensagem e cartão móvel conferidos.
+- [x] Múltiplos cartões com limites, fechamento, vencimento e comprometimento por parcelas futuras; cadastro, vínculo e recarga verificados.
+- [x] Histórico dos sete últimos salvamentos anteriores isolado por perfil; retenção, isolamento e restauração com leitura do estado recuperado verificados.

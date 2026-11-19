@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ApiPublicAdminUsersRouteImport } from './routes/api/public/admin-users'
+import { Route as ApiPublicAiUsageRouteImport } from './routes/api/public/ai-usage'
 import { Route as ApiPublicDollarRateRouteImport } from './routes/api/public/dollar-rate'
 import { Route as ApiPublicPlannedPurchaseRouteImport } from './routes/api/public/planned-purchase'
 
@@ -22,6 +23,11 @@ const IndexRoute = IndexRouteImport.update({
 const ApiPublicAdminUsersRoute = ApiPublicAdminUsersRouteImport.update({
   id: '/api/public/admin-users',
   path: '/api/public/admin-users',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPublicAiUsageRoute = ApiPublicAiUsageRouteImport.update({
+  id: '/api/public/ai-usage',
+  path: '/api/public/ai-usage',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiPublicDollarRateRoute = ApiPublicDollarRateRouteImport.update({
@@ -39,12 +45,14 @@ const ApiPublicPlannedPurchaseRoute =
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/api/public/admin-users': typeof ApiPublicAdminUsersRoute
+  '/api/public/ai-usage': typeof ApiPublicAiUsageRoute
   '/api/public/dollar-rate': typeof ApiPublicDollarRateRoute
   '/api/public/planned-purchase': typeof ApiPublicPlannedPurchaseRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/api/public/admin-users': typeof ApiPublicAdminUsersRoute
+  '/api/public/ai-usage': typeof ApiPublicAiUsageRoute
   '/api/public/dollar-rate': typeof ApiPublicDollarRateRoute
   '/api/public/planned-purchase': typeof ApiPublicPlannedPurchaseRoute
 }
@@ -52,6 +60,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/api/public/admin-users': typeof ApiPublicAdminUsersRoute
+  '/api/public/ai-usage': typeof ApiPublicAiUsageRoute
   '/api/public/dollar-rate': typeof ApiPublicDollarRateRoute
   '/api/public/planned-purchase': typeof ApiPublicPlannedPurchaseRoute
 }
@@ -60,18 +69,21 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/api/public/admin-users'
+    | '/api/public/ai-usage'
     | '/api/public/dollar-rate'
     | '/api/public/planned-purchase'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/api/public/admin-users'
+    | '/api/public/ai-usage'
     | '/api/public/dollar-rate'
     | '/api/public/planned-purchase'
   id:
     | '__root__'
     | '/'
     | '/api/public/admin-users'
+    | '/api/public/ai-usage'
     | '/api/public/dollar-rate'
     | '/api/public/planned-purchase'
   fileRoutesById: FileRoutesById
@@ -79,6 +91,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   ApiPublicAdminUsersRoute: typeof ApiPublicAdminUsersRoute
+  ApiPublicAiUsageRoute: typeof ApiPublicAiUsageRoute
   ApiPublicDollarRateRoute: typeof ApiPublicDollarRateRoute
   ApiPublicPlannedPurchaseRoute: typeof ApiPublicPlannedPurchaseRoute
 }
@@ -97,6 +110,13 @@ declare module '@tanstack/react-router' {
       path: '/api/public/admin-users'
       fullPath: '/api/public/admin-users'
       preLoaderRoute: typeof ApiPublicAdminUsersRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/ai-usage': {
+      id: '/api/public/ai-usage'
+      path: '/api/public/ai-usage'
+      fullPath: '/api/public/ai-usage'
+      preLoaderRoute: typeof ApiPublicAiUsageRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/public/dollar-rate': {
@@ -119,6 +139,7 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   ApiPublicAdminUsersRoute: ApiPublicAdminUsersRoute,
+  ApiPublicAiUsageRoute: ApiPublicAiUsageRoute,
   ApiPublicDollarRateRoute: ApiPublicDollarRateRoute,
   ApiPublicPlannedPurchaseRoute: ApiPublicPlannedPurchaseRoute,
 }

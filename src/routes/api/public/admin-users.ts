@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { createClient } from "@supabase/supabase-js";
 import type { Database } from "@/integrations/supabase/types";
+import { aiMonth } from '@/lib/ai-quota';
 
 const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json" } });
@@ -33,7 +34,7 @@ export const Route = createFileRoute("/api/public/admin-users")({
       POST: async ({ request }) => {
         const adminId = await requireAdmin(request);
         if (!adminId) return json({ error: "Acesso negado." }, 403);
-        let body: { action?: string; amount?: number; unit?: string; email?: string; password?: string; id?: string; name?: string };
+        let body: { action?: string; amount?: number; unit?: string; email?: string; password?: string; id?: string; name?: string; enabled?: boolean };
         try { body = await request.json(); } catch { return json({ error: "Pedido inválido." }, 400); }
         const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
         const a = supabaseAdmin.auth.admin;
@@ -52,6 +53,13 @@ export const Route = createFileRoute("/api/public/admin-users")({
           case "list": {
             const { data, error } = await a.listUsers({ perPage: 1000 });
             if (error) return json({ error: error.message }, 500);
+            const [permissions, usage] = await Promise.all([
+              supabaseAdmin.from('ai_account_access').select('user_id, enabled'),
+              supabaseAdmin.from('ai_monthly_usage').select('user_id, used').eq('month', aiMonth()),
+            ]);
+            if (permissions.error || usage.error) return json({ error: 'Não foi possível consultar o consumo de IA.' }, 503);
+            const aiPermissions = new Map((permissions.data || []).map(row => [row.user_id, row.enabled]));
+            const aiUsage = new Map((usage.data || []).map(row => [row.user_id, row.used]));
             const { data: rows } = await supabaseAdmin.from("app_state").select("id, json, updated_at");
             const names: Record<string, string> = {};
             const stats: Record<string, { total: number; ativos: number; updated_at: string }> = {};
@@ -75,7 +83,15 @@ export const Route = createFileRoute("/api/public/admin-users")({
               } catch { /* ignore */ }
             }
             const key = (id: string) => (id === adminId ? (stats[id] ? id : "main") : id);
-            return json({ users: data.users.map((u) => ({ id: u.id, name: names[u.id] || names[key(u.id)] || "", stats: stats[u.id] || stats[key(u.id)] || null, expires_at: (u.app_metadata as { expires_at?: string } | undefined)?.expires_at || null, email: u.email, created_at: u.created_at, last_sign_in_at: u.last_sign_in_at, suspended: !!(u as { banned_until?: string }).banned_until && new Date((u as { banned_until?: string }).banned_until!).getTime() > Date.now(), admin: u.id === adminId })) });
+            return json({ users: data.users.map((u) => ({ id: u.id, name: names[u.id] || names[key(u.id)] || "", stats: stats[u.id] || stats[key(u.id)] || null, expires_at: (u.app_metadata as { expires_at?: string } | undefined)?.expires_at || null, email: u.email, created_at: u.created_at, last_sign_in_at: u.last_sign_in_at, suspended: Boolean((u as { banned_until?: string }).banned_until && new Date(String((u as { banned_until?: string }).banned_until)).getTime() > Date.now()), admin: u.id === adminId, ai_enabled: aiPermissions.get(u.id) ?? true, ai_used: aiUsage.get(u.id) ?? 0, ai_limit: u.id === adminId ? null : 4 })) });
+          }
+          case 'ai-permission': {
+            if (!/^[0-9a-f-]{36}$/i.test(id) || typeof body.enabled !== 'boolean' || id === adminId) return json({ error: 'Acesso ou permissão inválida.' }, 400);
+            const { data: target, error: lookupError } = await a.getUserById(id);
+            if (lookupError || !target.user) return json({ error: 'Acesso não encontrado.' }, 404);
+            const { error } = await supabaseAdmin.from('ai_account_access').upsert({ user_id: id, enabled: body.enabled });
+            if (error) return json({ error: 'Não foi possível alterar a permissão.' }, 500);
+            return json({ ok: true });
           }
           case "create": {
             if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || email.length > 255) return json({ error: "E-mail inválido." }, 400);
@@ -129,7 +145,8 @@ export const Route = createFileRoute("/api/public/admin-users")({
             if (body.unit !== "sem") {
               if (!(n >= 1 && n <= 1000)) return json({ error: "Informe uma duração entre 1 e 1000." }, 400);
               const d = new Date();
-              if (units[body.unit || ""]) d.setTime(d.getTime() + n * units[body.unit!]!);
+              const unitMs = units[body.unit || ''];
+              if (unitMs) d.setTime(d.getTime() + n * unitMs);
               else if (body.unit === "meses") d.setMonth(d.getMonth() + n);
               else if (body.unit === "anos") d.setFullYear(d.getFullYear() + n);
               else return json({ error: "Unidade inválida." }, 400);
