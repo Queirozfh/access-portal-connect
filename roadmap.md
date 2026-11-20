@@ -15,3 +15,4 @@
 - [x] Cobrança mensal por pessoa via WhatsApp, com itens, saldo parcial e chave Pix configurável; mensagem e cartão móvel conferidos.
 - [x] Múltiplos cartões com limites, fechamento, vencimento e comprometimento por parcelas futuras; cadastro, vínculo e recarga verificados.
 - [x] Histórico dos sete últimos salvamentos anteriores isolado por perfil; retenção, isolamento e restauração com leitura do estado recuperado verificados.
+- [x] Conferência completa por pessoa, cartão e item nos temas claro/escuro, computador/celular e após salvar ou restaurar; seletor de IA ajustado ao tema e conta temporária removida.
