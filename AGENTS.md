@@ -21,3 +21,5 @@
 - Reserve AI requests atomically in a service-only database function after caller validation; calendar months use America/Fortaleza, non-admin quotas apply even under concurrency, and permissions stay outside financial state.
 - Archive changed app_state values via a database trigger with seven prior versions per account; restore under a row lock and preserve the displaced state so recovery does not depend on a browser or polling.
 - Store card definitions and item card IDs in each account's current financial state; compute global commitments from unpaid dated items without adding bills a second time or projecting infinite subscriptions.
+
+- Keep per-person WhatsApp numbers in the account settings map keyed by person name and migrate those associations on renaming; direct wa.me links require a validated Brazilian DDI/DDD number, while financial state exports retain the contacts.

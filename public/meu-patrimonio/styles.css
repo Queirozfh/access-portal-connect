@@ -60,3 +60,5 @@ html{zoom:1;letter-spacing:0}#modal{border:1px solid var(--line);border-radius:8
 .access-actions [data-ai-user]{font:inherit;color:var(--ink);background:var(--paper);border:1px solid var(--line);border-radius:6px;min-height:32px;padding:5px 8px;color-scheme:light}
 body[data-theme="dark"] .access-actions [data-ai-user]{color-scheme:dark}
 .access-actions [data-ai-user]:focus-visible{outline:2px solid var(--purple);outline-offset:2px}
+
+.person-settings-row{flex-wrap:wrap;justify-content:flex-start}.person-settings-row>[data-person-index]{flex:1 1 130px}.person-phone{display:grid;gap:4px;flex:1 1 150px;min-width:0;font-size:10px;color:var(--muted)}.person-phone input{width:100%;box-sizing:border-box;background:var(--paper);border-color:var(--line)}.person-settings-row>.bill-toggle{margin-right:auto}@media(max-width:680px){.person-settings-row>[data-person-index],.person-phone{flex-basis:calc(50% - 9px)}.person-settings-row{gap:10px}.person-settings-row>.bill-toggle{flex:1 1 auto}.month-popover{left:0;right:auto;box-sizing:border-box;width:min(292px,calc(100vw - 24px))}}

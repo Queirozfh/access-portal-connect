@@ -43,4 +43,21 @@ describe('account safety and payments', () => {
     expect(text).toContain('Mercado: R$ 100'); expect(text).toContain('Total do mês: R$ 100');
     expect(text).toContain('Já recebido: R$ 40'); expect(text).toContain('Ainda a receber: R$ 60'); expect(text).toContain('Pix: pix-exemplo');
   });
+  it('adds Brazil DDI to a masked number and preserves an existing DDI', () => {
+    expect(runInNewContext(helpers + ';normalizeWhatsAppPhone("(85) 99999-9999")')).toBe('5585999999999');
+    expect(runInNewContext(helpers + ';normalizeWhatsAppPhone("+55 (85) 99999-9999")')).toBe('5585999999999');
+    expect(runInNewContext(helpers + ';normalizeWhatsAppPhone("(55) 99999-9999")')).toBe('5555999999999');
+  });
+  it('does not generate a contact link for missing or invalid numbers', () => {
+    for (const phone of ['', '99999-9999', '00000000000', 'https://evil.example']) {
+      expect(runInNewContext(helpers + ';whatsAppContactLink(phone,"cobrança")', { phone })).toBe('');
+    }
+  });
+  it('encodes the entire multiline message into the specified private conversation', () => {
+    const message = 'Mercado\nParcela 2/4\nSaldo: R$ 60\nPix: email+pix@example.com';
+    const link = runInNewContext(helpers + ';whatsAppContactLink("(85) 99999-9999",message)', { message });
+    const url = new URL(link);
+    expect(url.origin + url.pathname).toBe('https://wa.me/5585999999999');
+    expect(url.searchParams.get('text')).toBe(message);
+  });
 });

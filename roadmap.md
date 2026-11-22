@@ -16,3 +16,5 @@
 - [x] Múltiplos cartões com limites, fechamento, vencimento e comprometimento por parcelas futuras; cadastro, vínculo e recarga verificados.
 - [x] Histórico dos sete últimos salvamentos anteriores isolado por perfil; retenção, isolamento e restauração com leitura do estado recuperado verificados.
 - [x] Conferência completa por pessoa, cartão e item nos temas claro/escuro, computador/celular e após salvar ou restaurar; seletor de IA ajustado ao tema e conta temporária removida.
+- [x] Telefones por pessoa com máscara, salvamento online e cobrança direta no WhatsApp com resumo mensal e Pix; cadastro, recarga e preservação ao renomear conferidos.
+- [x] Calendário permanece aberto ao mudar o ano e inteiramente visível no celular; verificado nos dois temas e no computador.
