@@ -14,6 +14,7 @@ import { Route as ApiPublicAdminUsersRouteImport } from './routes/api/public/adm
 import { Route as ApiPublicAiUsageRouteImport } from './routes/api/public/ai-usage'
 import { Route as ApiPublicDollarRateRouteImport } from './routes/api/public/dollar-rate'
 import { Route as ApiPublicPlannedPurchaseRouteImport } from './routes/api/public/planned-purchase'
+import { Route as ApiPublicPluggyRouteImport } from './routes/api/public/pluggy'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -41,6 +42,11 @@ const ApiPublicPlannedPurchaseRoute =
     path: '/api/public/planned-purchase',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPublicPluggyRoute = ApiPublicPluggyRouteImport.update({
+  id: '/api/public/pluggy',
+  path: '/api/public/pluggy',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -48,6 +54,7 @@ export interface FileRoutesByFullPath {
   '/api/public/ai-usage': typeof ApiPublicAiUsageRoute
   '/api/public/dollar-rate': typeof ApiPublicDollarRateRoute
   '/api/public/planned-purchase': typeof ApiPublicPlannedPurchaseRoute
+  '/api/public/pluggy': typeof ApiPublicPluggyRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -55,6 +62,7 @@ export interface FileRoutesByTo {
   '/api/public/ai-usage': typeof ApiPublicAiUsageRoute
   '/api/public/dollar-rate': typeof ApiPublicDollarRateRoute
   '/api/public/planned-purchase': typeof ApiPublicPlannedPurchaseRoute
+  '/api/public/pluggy': typeof ApiPublicPluggyRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -63,6 +71,7 @@ export interface FileRoutesById {
   '/api/public/ai-usage': typeof ApiPublicAiUsageRoute
   '/api/public/dollar-rate': typeof ApiPublicDollarRateRoute
   '/api/public/planned-purchase': typeof ApiPublicPlannedPurchaseRoute
+  '/api/public/pluggy': typeof ApiPublicPluggyRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -72,6 +81,7 @@ export interface FileRouteTypes {
     | '/api/public/ai-usage'
     | '/api/public/dollar-rate'
     | '/api/public/planned-purchase'
+    | '/api/public/pluggy'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -79,6 +89,7 @@ export interface FileRouteTypes {
     | '/api/public/ai-usage'
     | '/api/public/dollar-rate'
     | '/api/public/planned-purchase'
+    | '/api/public/pluggy'
   id:
     | '__root__'
     | '/'
@@ -86,6 +97,7 @@ export interface FileRouteTypes {
     | '/api/public/ai-usage'
     | '/api/public/dollar-rate'
     | '/api/public/planned-purchase'
+    | '/api/public/pluggy'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -94,6 +106,7 @@ export interface RootRouteChildren {
   ApiPublicAiUsageRoute: typeof ApiPublicAiUsageRoute
   ApiPublicDollarRateRoute: typeof ApiPublicDollarRateRoute
   ApiPublicPlannedPurchaseRoute: typeof ApiPublicPlannedPurchaseRoute
+  ApiPublicPluggyRoute: typeof ApiPublicPluggyRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -133,6 +146,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicPlannedPurchaseRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/pluggy': {
+      id: '/api/public/pluggy'
+      path: '/api/public/pluggy'
+      fullPath: '/api/public/pluggy'
+      preLoaderRoute: typeof ApiPublicPluggyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -142,6 +162,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicAiUsageRoute: ApiPublicAiUsageRoute,
   ApiPublicDollarRateRoute: ApiPublicDollarRateRoute,
   ApiPublicPlannedPurchaseRoute: ApiPublicPlannedPurchaseRoute,
+  ApiPublicPluggyRoute: ApiPublicPluggyRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
