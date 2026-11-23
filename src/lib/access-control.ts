@@ -58,6 +58,7 @@ export const ACCESS_FEATURE_GROUPS = [
     { id: 'settings.companyFiscal', label: 'Editar dados fiscais da empresa', minLevel: 5 },
     { id: 'settings.security', label: 'Alterar opções de segurança', minLevel: 5 },
     { id: 'account.export', label: 'Baixar ou restaurar cópia dos dados', minLevel: 5 },
+    { id: 'profile.pj', label: 'Acessar perfil financeiro PJ (exclusivo nível 5)', minLevel: 5 },
     { id: 'privacy.toggle', label: 'Ocultar ou exibir valores', minLevel: 1 },
   ] },
   { id: 'integrations', label: 'Integrações', features: [
@@ -95,5 +96,6 @@ export async function accessPolicyForUser(userId: string) {
     ? policy.features.filter((feature): feature is (typeof ACCESS_FEATURE_IDS)[number] =>
       typeof feature === 'string' && (ACCESS_FEATURE_IDS as readonly string[]).includes(feature))
     : defaultAccessFeatures(level);
+  if (level === 5 && !features.includes('profile.pj')) features.push('profile.pj');
   return { level, features };
 }

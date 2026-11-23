@@ -90,7 +90,13 @@ export const Route = createFileRoute("/api/public/admin-users")({
             const { data, error } = await a.getUserById(ACCESS_ADMIN_USER_ID);
             if (error || !data.user) return json({ error: 'Não foi possível carregar a configuração do administrador.' }, 503);
             const metadata = data.user.app_metadata as { access_policies?: Array<{ level: number; features: string[] }> } | undefined;
-            const policies = Array.isArray(metadata?.access_policies) ? metadata.access_policies : [1, 2, 3, 4, 5].map(level => ({ level, features: defaultAccessFeatures(level) }));
+            const configured = Array.isArray(metadata?.access_policies) ? metadata.access_policies : [];
+            const policies = [1, 2, 3, 4, 5].map(level => {
+              const saved = configured.find(policy => Number(policy.level) === level);
+              const features = new Set((Array.isArray(saved?.features) ? saved.features : defaultAccessFeatures(level)).filter(feature => (ACCESS_FEATURE_IDS as readonly string[]).includes(feature)));
+              if (level === 5) for (const feature of ACCESS_FEATURE_IDS) features.add(feature);
+              return { level, features: [...features] };
+            });
             return json({ policies });
           }
           case 'save-access-policies': {
@@ -99,7 +105,7 @@ export const Route = createFileRoute("/api/public/admin-users")({
             const featuresByLevel = new Map<number, Set<string>>();
             for (const policy of policies) {
               if (!Number.isInteger(policy.level) || policy.level < 1 || policy.level > 5 || !Array.isArray(policy.features)) return json({ error: 'A configuração de nível é inválida.' }, 400);
-              if (policy.features.some(feature => !ACCESS_FEATURE_IDS.includes(feature))) return json({ error: 'A matriz contém uma funcionalidade desconhecida.' }, 400);
+              if (policy.features.some(feature => !(ACCESS_FEATURE_IDS as readonly string[]).includes(feature))) return json({ error: 'A matriz contém uma funcionalidade desconhecida.' }, 400);
               featuresByLevel.set(policy.level, new Set(policy.features));
             }
             if (ACCESS_FEATURE_IDS.some(feature => !featuresByLevel.get(5)?.has(feature))) return json({ error: 'O nível 5 deve manter acesso completo.' }, 400);
@@ -108,6 +114,7 @@ export const Route = createFileRoute("/api/public/admin-users")({
                 if (!featuresByLevel.get(level)?.has(feature)) return json({ error: 'Os níveis superiores precisam preservar os acessos dos níveis inferiores.' }, 400);
               }
             }
+            if ([1, 2, 3, 4].some(level => featuresByLevel.get(level)?.has('profile.pj'))) return json({ error: 'O perfil PJ é exclusivo do nível 5.' }, 400);
             const { data: adminData, error: adminError } = await a.getUserById(ACCESS_ADMIN_USER_ID);
             if (adminError || !adminData.user) return json({ error: 'Não foi possível carregar o perfil administrador para salvar as permissões.' }, 503);
             const appMetadata = (adminData.user.app_metadata || {}) as Record<string, unknown>;
