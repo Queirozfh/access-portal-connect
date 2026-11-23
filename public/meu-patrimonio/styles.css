@@ -36,7 +36,7 @@ body[data-theme="dark"] .delete-icon{background:#3b2932;color:#f1a1aa}
 .installment-status-tabs{margin:10px 0 15px}
 .installment-status-tabs button span{display:inline-grid;min-width:19px;height:19px;place-items:center;margin-left:5px;padding:0 5px;border-radius:10px;background:var(--bg);font-size:9px}
 .installment-status-tabs button.active span{background:var(--pale);color:var(--purple)}
-.bulk-actions{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:8px 0 13px;color:var(--muted);font-size:11px}
+.bulk-actions{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:12px;padding:8px 0 13px;color:var(--muted);font-size:11px}
 .bulk-actions .btn:disabled{opacity:.45;cursor:not-allowed}
 .select-column{width:36px;text-align:center}
 .select-column input{width:15px;height:15px;accent-color:var(--purple);cursor:pointer}
