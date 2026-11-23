@@ -62,7 +62,6 @@ export const Route = createFileRoute("/api/public/admin-users")({
             const aiPermissions = new Map((permissions.data || []).map(row => [row.user_id, row.enabled]));
             const aiUsage = new Map((usage.data || []).map(row => [row.user_id, row.used]));
             const { data: accessLevels, error: accessLevelError } = await supabaseAdmin.from('user_access_levels').select('user_id, level');
-            if (accessLevelError) return json({ error: 'Não foi possível consultar os níveis de acesso.' }, 503);
             const levelByUser = new Map((accessLevels || []).map(row => [row.user_id, row.level]));
             const { data: rows } = await supabaseAdmin.from("app_state").select("id, json, updated_at");
             const names: Record<string, string> = {};
@@ -87,7 +86,7 @@ export const Route = createFileRoute("/api/public/admin-users")({
               } catch { /* ignore */ }
             }
             const key = (id: string) => (id === adminId ? (stats[id] ? id : "main") : id);
-            return json({ users: data.users.map((u) => ({ id: u.id, name: names[u.id] || names[key(u.id)] || "", stats: stats[u.id] || stats[key(u.id)] || null, expires_at: (u.app_metadata as { expires_at?: string } | undefined)?.expires_at || null, email: u.email, created_at: u.created_at, last_sign_in_at: u.last_sign_in_at, suspended: Boolean((u as { banned_until?: string }).banned_until && new Date(String((u as { banned_until?: string }).banned_until)).getTime() > Date.now()), admin: u.id === adminId, access_level: u.id === adminId ? 5 : levelByUser.get(u.id) ?? 1, ai_enabled: aiPermissions.get(u.id) ?? true, ai_used: aiUsage.get(u.id) ?? 0, ai_limit: u.id === adminId ? null : 4 })) });
+            return json({ users: data.users.map((u) => ({ id: u.id, name: names[u.id] || names[key(u.id)] || "", stats: stats[u.id] || stats[key(u.id)] || null, expires_at: (u.app_metadata as { expires_at?: string } | undefined)?.expires_at || null, email: u.email, created_at: u.created_at, last_sign_in_at: u.last_sign_in_at, suspended: Boolean((u as { banned_until?: string }).banned_until && new Date(String((u as { banned_until?: string }).banned_until)).getTime() > Date.now()), admin: u.id === adminId, access_level: u.id === adminId ? 5 : levelByUser.get(u.id) ?? (accessLevelError ? 5 : 1), ai_enabled: aiPermissions.get(u.id) ?? true, ai_used: aiUsage.get(u.id) ?? 0, ai_limit: u.id === adminId ? null : 4, access_levels_ready: !accessLevelError })) });
           }
           case 'access-policies': {
             const { data, error } = await supabaseAdmin.from('feature_access_levels').select('level, features').order('level');
