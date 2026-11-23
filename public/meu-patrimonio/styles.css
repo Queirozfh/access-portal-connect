@@ -37,7 +37,7 @@ body[data-theme="dark"] .delete-icon{background:#3b2932;color:#f1a1aa}
 .installment-status-tabs button span{display:inline-grid;min-width:19px;height:19px;place-items:center;margin-left:5px;padding:0 5px;border-radius:10px;background:var(--bg);font-size:9px}
 .installment-status-tabs button.active span{background:var(--pale);color:var(--purple)}
 .bulk-actions{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:12px;padding:8px 0 13px;color:var(--muted);font-size:11px}
-.bulk-actions .btn:disabled{opacity:.45;cursor:not-allowed}
+.bulk-actions select{min-width:160px;max-width:100%;padding:9px 12px;border:1px solid var(--line);border-radius:8px;background:var(--paper);color:var(--ink);font:500 12px 'DM Sans',sans-serif}.bulk-actions select:focus-visible{outline:2px solid var(--purple);outline-offset:2px}body[data-theme="dark"] .bulk-actions select{background:#252b38;border-color:#383f4e;color:#e9edf5}.bulk-actions .btn:disabled{opacity:.45;cursor:not-allowed}
 .select-column{width:36px;text-align:center}
 .select-column input{width:15px;height:15px;accent-color:var(--purple);cursor:pointer}
 body[data-theme="dark"] .delete-dialog{background:var(--paper);color:var(--ink);border-color:var(--line)}
