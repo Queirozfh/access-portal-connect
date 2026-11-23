@@ -43,6 +43,13 @@
       "when": 1794971153535,
       "tag": "0005_ai_monthly_quota_and_saved_history",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1795442324000,
+      "tag": "0006_daily_account_backup",
+      "breakpoints": true
     }
   ]
 }
