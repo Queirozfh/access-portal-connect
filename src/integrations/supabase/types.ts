@@ -89,6 +89,42 @@ export type Database = {
         }
         Relationships: []
       }
+      feature_access_levels: {
+        Row: {
+          features: Json
+          level: number
+          updated_at: string
+        }
+        Insert: {
+          features: Json
+          level: number
+          updated_at?: string
+        }
+        Update: {
+          features?: Json
+          level?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      user_access_levels: {
+        Row: {
+          level: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          level?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          level?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           id: string

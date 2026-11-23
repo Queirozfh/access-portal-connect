@@ -1,0 +1,94 @@
+export const ACCESS_FEATURE_GROUPS = [
+  { id: 'home', label: 'Visão geral', features: [{ id: 'home.view', label: 'Abrir fluxo de caixa / início', minLevel: 1 }] },
+  { id: 'receivables', label: 'A receber', features: [
+    { id: 'receivable.view', label: 'Consultar contas e valores a receber', minLevel: 1 },
+    { id: 'receivable.add', label: 'Cadastrar recebimentos e faturamento', minLevel: 2 },
+    { id: 'receivable.edit', label: 'Editar recebimentos', minLevel: 2 },
+    { id: 'receivable.receive', label: 'Registrar recebimento / reembolso', minLevel: 2 },
+    { id: 'receivable.ledger', label: 'Consultar extrato por pessoa / cliente', minLevel: 2 },
+    { id: 'receivable.receipt', label: 'Gerar recibo de quitação', minLevel: 3 },
+    { id: 'receivable.whatsapp', label: 'Cobrar ou compartilhar pelo WhatsApp', minLevel: 3 },
+  ] },
+  { id: 'expenses', label: 'Despesas e assinaturas', features: [
+    { id: 'expenses.view', label: 'Consultar despesas', minLevel: 1 },
+    { id: 'expenses.add', label: 'Cadastrar despesas', minLevel: 2 },
+    { id: 'expenses.quick', label: 'Usar lançamento rápido', minLevel: 2 },
+    { id: 'expenses.edit', label: 'Editar despesas', minLevel: 2 },
+    { id: 'expenses.pay', label: 'Registrar pagamento', minLevel: 2 },
+    { id: 'expenses.delete', label: 'Excluir uma despesa', minLevel: 3 },
+    { id: 'expenses.bulkDelete', label: 'Excluir várias despesas', minLevel: 4 },
+    { id: 'expenses.assignCard', label: 'Vincular despesas a cartão', minLevel: 3 },
+    { id: 'expenses.split', label: 'Dividir despesa por rateio', minLevel: 3 },
+    { id: 'expenses.reorder', label: 'Reordenar despesas', minLevel: 3 },
+    { id: 'subscriptions.view', label: 'Abrir radar de assinaturas', minLevel: 2 },
+  ] },
+  { id: 'invoices', label: 'Faturas e cartões', features: [
+    { id: 'invoices.view', label: 'Consultar faturas e recebimentos', minLevel: 2 },
+    { id: 'invoices.bills.manage', label: 'Cadastrar, pagar e editar faturas', minLevel: 3 },
+    { id: 'invoices.cards.manage', label: 'Cadastrar e administrar cartões', minLevel: 3 },
+    { id: 'invoices.reimbursements.manage', label: 'Administrar reembolsos e acertos', minLevel: 3 },
+  ] },
+  { id: 'commitments', label: 'Compras e linha do tempo', features: [
+    { id: 'installments.view', label: 'Consultar compras e parcelas', minLevel: 2 },
+    { id: 'installments.reorder', label: 'Reordenar compras e parcelas', minLevel: 3 },
+    { id: 'timeline.view', label: 'Consultar linha do tempo', minLevel: 2 },
+  ] },
+  { id: 'assets', label: 'Patrimônio', features: [
+    { id: 'assets.view', label: 'Consultar saldos e alocação', minLevel: 3 },
+    { id: 'assets.manage', label: 'Cadastrar e editar movimentações', minLevel: 4 },
+    { id: 'assets.goals', label: 'Administrar metas financeiras', minLevel: 4 },
+    { id: 'assets.emergencyReserve', label: 'Consultar reserva e cobertura de caixa', minLevel: 4 },
+    { id: 'assets.passiveIncome', label: 'Consultar projeção de renda passiva', minLevel: 4 },
+  ] },
+  { id: 'planning', label: 'Planejamento', features: [
+    { id: 'planning.view', label: 'Abrir simuladores', minLevel: 3 },
+    { id: 'planning.analyze', label: 'Analisar compra planejada com IA', minLevel: 4 },
+    { id: 'planning.compound', label: 'Simular juros compostos', minLevel: 4 },
+    { id: 'planning.vehicleSimulator', label: 'Simular financiamento e troca de veículo', minLevel: 4 },
+  ] },
+  { id: 'reports', label: 'Relatórios', features: [
+    { id: 'reports.view', label: 'Consultar relatórios e DRE', minLevel: 3 },
+    { id: 'reports.export', label: 'Imprimir ou exportar relatórios', minLevel: 4 },
+  ] },
+  { id: 'settings', label: 'Ajustes e conta', features: [
+    { id: 'settings.view', label: 'Abrir Ajustes', minLevel: 4 },
+    { id: 'settings.people', label: 'Administrar pessoas, clientes e fornecedores', minLevel: 4 },
+    { id: 'settings.categories', label: 'Administrar categorias', minLevel: 4 },
+    { id: 'settings.criteria', label: 'Alterar critérios e metas financeiras', minLevel: 4 },
+    { id: 'settings.companyFiscal', label: 'Editar dados fiscais da empresa', minLevel: 5 },
+    { id: 'settings.security', label: 'Alterar opções de segurança', minLevel: 5 },
+    { id: 'account.export', label: 'Baixar ou restaurar cópia dos dados', minLevel: 5 },
+    { id: 'privacy.toggle', label: 'Ocultar ou exibir valores', minLevel: 1 },
+  ] },
+  { id: 'integrations', label: 'Integrações', features: [
+    { id: 'integrations.openFinance', label: 'Conectar e sincronizar instituição bancária', minLevel: 5 },
+  ] },
+] as const;
+
+export const ACCESS_FEATURES = ACCESS_FEATURE_GROUPS.flatMap(group => group.features);
+export const ACCESS_FEATURE_IDS = ACCESS_FEATURES.map(feature => feature.id);
+export const ACCESS_LEVEL_LABELS: Record<number, string> = {
+  1: 'Básico', 2: 'Essencial', 3: 'Intermediário', 4: 'Avançado', 5: 'Completo',
+};
+export const ALL_ACCESS_FEATURES = [...ACCESS_FEATURE_IDS];
+
+export function defaultAccessFeatures(level: number): string[] {
+  const safeLevel = Math.max(1, Math.min(5, Math.floor(level || 1)));
+  return ACCESS_FEATURES.filter(feature => feature.minLevel <= safeLevel).map(feature => feature.id);
+}
+
+export async function accessPolicyForUser(userId: string) {
+  const { supabaseAdmin } = await import('@/integrations/supabase/client.server');
+  const { data: assignment, error: assignmentError } = await supabaseAdmin
+    .from('user_access_levels').select('level').eq('user_id', userId).maybeSingle();
+  if (assignmentError) throw assignmentError;
+  const level = Math.max(1, Math.min(5, Number(assignment?.level) || 1));
+  const { data: policy, error: policyError } = await supabaseAdmin
+    .from('feature_access_levels').select('features').eq('level', level).maybeSingle();
+  if (policyError) throw policyError;
+  const features = Array.isArray(policy?.features)
+    ? policy.features.filter((feature): feature is (typeof ACCESS_FEATURE_IDS)[number] =>
+      typeof feature === 'string' && (ACCESS_FEATURE_IDS as readonly string[]).includes(feature))
+    : defaultAccessFeatures(level);
+  return { level, features };
+}

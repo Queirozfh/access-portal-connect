@@ -3,12 +3,19 @@ import { portalAuth } from '@/lib/portal-auth.server';
 import { estimatePurchase, plannedPurchaseSchema } from '@/lib/financial-analysis';
 import { analysisState } from '@/lib/patrimonio-state';
 import { createResponsesCall } from '@/lib/ai/responses.server';
+import { accessPolicyForUser } from '@/lib/access-control';
 
 const json = (body: unknown, status = 200) => Response.json(body, { status });
 export const Route = createFileRoute('/api/public/planned-purchase')({
   server: { handlers: { POST: async ({ request }) => {
     const auth = await portalAuth(request);
     if (!auth) return json({ error: 'Acesso suspenso ou sessão expirada. Entre novamente.' }, 403);
+    const { data: isAdmin, error: roleError } = await auth.client.rpc('has_role', { _user_id: auth.userId, _role: 'admin' });
+    if (roleError) return json({ error: 'Não foi possível conferir suas permissões.' }, 503);
+    if (!isAdmin) {
+      try { if (!(await accessPolicyForUser(auth.userId)).features.includes('planning.analyze')) return json({ error: 'Seu nível de acesso não permite analisar compras.' }, 403); }
+      catch { return json({ error: 'Não foi possível consultar seu nível de acesso.' }, 503); }
+    }
     const parsed = plannedPurchaseSchema.safeParse(await request.json().catch(() => null));
     if (!parsed.success) return json({ error: 'Informe descrição, pessoa, valor total, mês e de 1 a 120 parcelas.' }, 400);
     const id = auth.userId === 'ad46a5e7-af23-4cff-b190-ea6b6140013d' ? 'main' : auth.userId;
