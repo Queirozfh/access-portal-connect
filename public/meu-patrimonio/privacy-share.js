@@ -54,10 +54,10 @@ act=function(action,id,index){
 document.addEventListener('visibilitychange',()=>{if(document.hidden&&authUser&&deviceBiometricLockEnabled())showDeviceBiometricLock()});
 function currentPersonBill(person){
   const group=monthStats(selected()).groups[person];if(!group?.items?.length)return null;
-  return{person,month:selected(),items:group.items,total:Number(group.total||0),received:Number(group.received||0),open:Number(group.open||0)}
+  return{person,month:selected(),items:group.items,total:group.items.reduce((sum,item)=>sum+Number(item.amount||0),0)}
 }
 function createBillCardCanvas(bill){
-  const canvas=document.createElement('canvas'),rowHeight=64,width=1000,header=280,footer=70;
+  const canvas=document.createElement('canvas'),rowHeight=64,width=1000,header=280,footer=140;
   canvas.width=width;canvas.height=header+bill.items.length*rowHeight+footer;
   const ctx=canvas.getContext('2d'),gradient=ctx.createLinearGradient(0,0,width,canvas.height);gradient.addColorStop(0,'#242a38');gradient.addColorStop(1,'#171b26');ctx.fillStyle=gradient;ctx.fillRect(0,0,width,canvas.height);
   ctx.strokeStyle='#c39d60';ctx.lineWidth=4;ctx.strokeRect(28,28,width-56,canvas.height-56);
@@ -66,6 +66,7 @@ function createBillCardCanvas(bill){
   ctx.fillStyle='#abb3c4';ctx.font='24px Arial';ctx.fillText(bill.person+' · '+longMonthLabel(bill.month),64,190);
   ctx.fillStyle='#c39d60';ctx.font='700 20px Arial';ctx.fillText('ITENS',64,245);
   bill.items.forEach((item,index)=>{const y=header+index*rowHeight;ctx.fillStyle='#eef1f7';ctx.font='22px Arial';ctx.fillText(String(item.name||'').slice(0,48),64,y);if(item.installments>1){ctx.fillStyle='#abb3c4';ctx.font='16px Arial';ctx.fillText('Parcela '+(item.part||1)+'/'+item.installments,64,y+24)}ctx.textAlign='right';ctx.fillStyle='#eef1f7';ctx.font='600 22px Arial';ctx.fillText(money(item.amount),width-64,y);ctx.textAlign='left';ctx.strokeStyle='#394152';ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(64,y+36);ctx.lineTo(width-64,y+36);ctx.stroke()});
+  const totalY=header+bill.items.length*rowHeight+70;ctx.fillStyle='#abb3c4';ctx.font='700 20px Arial';ctx.fillText('VALOR DA PARTE',64,totalY);ctx.textAlign='right';ctx.fillStyle='#c39d60';ctx.font='700 32px Arial';ctx.fillText(money(bill.total),width-64,totalY);ctx.textAlign='left';
   return canvas
 }
 async function openPersonBillCard(person){
