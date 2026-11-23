@@ -6,6 +6,7 @@ export const plannedPurchaseSchema = z.object({
   total: z.number().finite().positive().max(1e9),
   installments: z.number().int().min(1).max(120),
   start: z.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/),
+  profileType: z.enum(['PF', 'PJ']).optional(),
 });
 const planSchema = z.object({
   desc: z.string().default(''), who: z.string().default(''), cat: z.string().default('Outros'),
