@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { createClient } from "@supabase/supabase-js";
 import type { Database } from "@/integrations/supabase/types";
 import { aiMonth } from '@/lib/ai-quota';
-import { ACCESS_FEATURE_IDS } from '@/lib/access-control';
+import { ACCESS_ADMIN_USER_ID, ACCESS_FEATURE_IDS, defaultAccessFeatures } from '@/lib/access-control';
 
 const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json" } });
@@ -61,8 +61,6 @@ export const Route = createFileRoute("/api/public/admin-users")({
             if (permissions.error || usage.error) return json({ error: 'Não foi possível consultar o consumo de IA.' }, 503);
             const aiPermissions = new Map((permissions.data || []).map(row => [row.user_id, row.enabled]));
             const aiUsage = new Map((usage.data || []).map(row => [row.user_id, row.used]));
-            const { data: accessLevels, error: accessLevelError } = await supabaseAdmin.from('user_access_levels').select('user_id, level');
-            const levelByUser = new Map((accessLevels || []).map(row => [row.user_id, row.level]));
             const { data: rows } = await supabaseAdmin.from("app_state").select("id, json, updated_at");
             const names: Record<string, string> = {};
             const stats: Record<string, { total: number; ativos: number; updated_at: string }> = {};
@@ -86,12 +84,14 @@ export const Route = createFileRoute("/api/public/admin-users")({
               } catch { /* ignore */ }
             }
             const key = (id: string) => (id === adminId ? (stats[id] ? id : "main") : id);
-            return json({ users: data.users.map((u) => ({ id: u.id, name: names[u.id] || names[key(u.id)] || "", stats: stats[u.id] || stats[key(u.id)] || null, expires_at: (u.app_metadata as { expires_at?: string } | undefined)?.expires_at || null, email: u.email, created_at: u.created_at, last_sign_in_at: u.last_sign_in_at, suspended: Boolean((u as { banned_until?: string }).banned_until && new Date(String((u as { banned_until?: string }).banned_until)).getTime() > Date.now()), admin: u.id === adminId, access_level: u.id === adminId ? 5 : levelByUser.get(u.id) ?? (accessLevelError ? 5 : 1), ai_enabled: aiPermissions.get(u.id) ?? true, ai_used: aiUsage.get(u.id) ?? 0, ai_limit: u.id === adminId ? null : 4, access_levels_ready: !accessLevelError })) });
+            return json({ users: data.users.map((u) => { const metadata = u.app_metadata as { expires_at?: string; access_level?: number } | undefined; return ({ id: u.id, name: names[u.id] || names[key(u.id)] || "", stats: stats[u.id] || stats[key(u.id)] || null, expires_at: metadata?.expires_at || null, email: u.email, created_at: u.created_at, last_sign_in_at: u.last_sign_in_at, suspended: Boolean((u as { banned_until?: string }).banned_until && new Date(String((u as { banned_until?: string }).banned_until)).getTime() > Date.now()), admin: u.id === adminId, access_level: u.id === adminId ? 5 : Number(metadata?.access_level) || 5, ai_enabled: aiPermissions.get(u.id) ?? true, ai_used: aiUsage.get(u.id) ?? 0, ai_limit: u.id === adminId ? null : 4, access_levels_ready: true }); }) });
           }
           case 'access-policies': {
-            const { data, error } = await supabaseAdmin.from('feature_access_levels').select('level, features').order('level');
-            if (error) return json({ error: 'Não foi possível carregar a matriz de permissões.' }, 503);
-            return json({ policies: data || [] });
+            const { data, error } = await a.getUserById(ACCESS_ADMIN_USER_ID);
+            if (error || !data.user) return json({ error: 'Não foi possível carregar a configuração do administrador.' }, 503);
+            const metadata = data.user.app_metadata as { access_policies?: Array<{ level: number; features: string[] }> } | undefined;
+            const policies = Array.isArray(metadata?.access_policies) ? metadata.access_policies : [1, 2, 3, 4, 5].map(level => ({ level, features: defaultAccessFeatures(level) }));
+            return json({ policies });
           }
           case 'save-access-policies': {
             const policies = body.policies || [];
@@ -108,8 +108,11 @@ export const Route = createFileRoute("/api/public/admin-users")({
                 if (!featuresByLevel.get(level)?.has(feature)) return json({ error: 'Os níveis superiores precisam preservar os acessos dos níveis inferiores.' }, 400);
               }
             }
-            const rows = policies.map(policy => ({ level: policy.level, features: [...new Set(policy.features)].sort(), updated_at: new Date().toISOString() }));
-            const { error } = await supabaseAdmin.from('feature_access_levels').upsert(rows);
+            const { data: adminData, error: adminError } = await a.getUserById(ACCESS_ADMIN_USER_ID);
+            if (adminError || !adminData.user) return json({ error: 'Não foi possível carregar o perfil administrador para salvar as permissões.' }, 503);
+            const appMetadata = (adminData.user.app_metadata || {}) as Record<string, unknown>;
+            const rows = policies.map(policy => ({ level: policy.level, features: [...new Set(policy.features)].sort() }));
+            const { error } = await a.updateUserById(ACCESS_ADMIN_USER_ID, { app_metadata: { ...appMetadata, access_policies: rows } });
             if (error) return json({ error: 'Não foi possível salvar a matriz de permissões.' }, 500);
             return json({ ok: true });
           }
@@ -118,7 +121,8 @@ export const Route = createFileRoute("/api/public/admin-users")({
             if (!/^[0-9a-f-]{36}$/i.test(id) || !Number.isInteger(level) || level < 1 || level > 5 || id === adminId) return json({ error: 'Usuário ou nível inválido.' }, 400);
             const { data: target, error: lookupError } = await a.getUserById(id);
             if (lookupError || !target.user) return json({ error: 'Acesso não encontrado.' }, 404);
-            const { error } = await supabaseAdmin.from('user_access_levels').upsert({ user_id: id, level, updated_at: new Date().toISOString() });
+            const metadata = (target.user.app_metadata || {}) as Record<string, unknown>;
+            const { error } = await a.updateUserById(id, { app_metadata: { ...metadata, access_level: level } });
             if (error) return json({ error: 'Não foi possível atribuir o nível.' }, 500);
             return json({ ok: true, level });
           }
@@ -138,9 +142,14 @@ export const Route = createFileRoute("/api/public/admin-users")({
             if (data.user?.id) {
               const requestedLevel = Number(body.access_level ?? 1);
               const level = Number.isInteger(requestedLevel) && requestedLevel >= 1 && requestedLevel <= 5 ? requestedLevel : 1;
+              const { data: freshUser, error: freshUserError } = await a.getUserById(data.user.id);
+              if (freshUserError || !freshUser.user) {
+                await a.deleteUser(data.user.id);
+                return json({ error: 'A conta foi criada, mas não foi possível configurar o nível de acesso.' }, 500);
+              }
               const [{ error: stateError }, { error: levelError }] = await Promise.all([
                 writeState(data.user.id, blank(name)),
-                supabaseAdmin.from('user_access_levels').upsert({ user_id: data.user.id, level, updated_at: new Date().toISOString() }),
+                a.updateUserById(data.user.id, { app_metadata: { ...(freshUser.user?.app_metadata || {}), access_level: level } }),
               ]);
               if (stateError || levelError) {
                 await a.deleteUser(data.user.id);

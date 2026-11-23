@@ -71,6 +71,7 @@ export const ACCESS_LEVEL_LABELS: Record<number, string> = {
   1: 'Básico', 2: 'Essencial', 3: 'Intermediário', 4: 'Avançado', 5: 'Completo',
 };
 export const ALL_ACCESS_FEATURES = [...ACCESS_FEATURE_IDS];
+export const ACCESS_ADMIN_USER_ID = 'ad46a5e7-af23-4cff-b190-ea6b6140013d';
 
 export function defaultAccessFeatures(level: number): string[] {
   const safeLevel = Math.max(1, Math.min(5, Math.floor(level || 1)));
@@ -79,13 +80,17 @@ export function defaultAccessFeatures(level: number): string[] {
 
 export async function accessPolicyForUser(userId: string) {
   const { supabaseAdmin } = await import('@/integrations/supabase/client.server');
-  const { data: assignment, error: assignmentError } = await supabaseAdmin
-    .from('user_access_levels').select('level').eq('user_id', userId).maybeSingle();
-  if (assignmentError) throw assignmentError;
-  const level = Math.max(1, Math.min(5, Number(assignment?.level) || 1));
-  const { data: policy, error: policyError } = await supabaseAdmin
-    .from('feature_access_levels').select('features').eq('level', level).maybeSingle();
-  if (policyError) throw policyError;
+  const [{ data: target, error: targetError }, { data: admin, error: adminError }] = await Promise.all([
+    supabaseAdmin.auth.admin.getUserById(userId),
+    supabaseAdmin.auth.admin.getUserById(ACCESS_ADMIN_USER_ID),
+  ]);
+  if (targetError || !target.user) throw targetError || new Error('Usuário não encontrado.');
+  if (adminError || !admin.user) throw adminError || new Error('Administrador principal não encontrado.');
+  const metadata = target.user.app_metadata as { access_level?: number } | undefined;
+  // Accounts created before access levels were introduced retain full access.
+  const level = Math.max(1, Math.min(5, Number(metadata?.access_level) || 5));
+  const adminMetadata = admin.user.app_metadata as { access_policies?: Array<{ level: number; features: string[] }> } | undefined;
+  const policy = adminMetadata?.access_policies?.find(item => Number(item.level) === level);
   const features = Array.isArray(policy?.features)
     ? policy.features.filter((feature): feature is (typeof ACCESS_FEATURE_IDS)[number] =>
       typeof feature === 'string' && (ACCESS_FEATURE_IDS as readonly string[]).includes(feature))
