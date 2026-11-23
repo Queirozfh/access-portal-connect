@@ -35,12 +35,12 @@ function settlementMessage(person){
   return `Olá, ${person}! Segue o acerto de ${longMonthLabel(month)}.\n\nGastos do mês: ${money(current.charges)}\nTransferências registradas: ${money(current.received)}\nSaldo anterior considerado: ${money(opening)}\n${credit?`Crédito remanescente: ${money(credit)}`:`Saldo em aberto: ${money(closing)}`}\n\n${closing<=0?'Mês quitado. Obrigado!':'O valor pode ser transferido pelo Pix já combinado. Obrigado!'}`;
 }
 function openPersonWhatsApp(person){
-  const phone=db.settings.peoplePhones?.[person],url=whatsAppContactLink(phone,settlementMessage(person));if(!url){toast('Cadastre o WhatsApp de '+person+' em Ajustes → Pessoas.');setPage('ajustes');return}window.open(url,'_blank','noopener,noreferrer');
+  const phone=db.settings.peoplePhones?.[person];if(!openWhatsAppChat(phone,settlementMessage(person))){toast('Cadastre o WhatsApp de '+person+' em Ajustes → Pessoas.');setPage('ajustes')}
 }
 function openPersonReceipt(person){
   const ledger=personLedger(person),r=ledger.current;if(!r.charges||ledger.closing>0.005){toast('O extrato ainda mostra um saldo em aberto para este mês.');return}
   const message=`🧾 RECIBO DE QUITAÇÃO\n\nPessoa: ${person}\nCompetência: ${longMonthLabel(selected())}\nGastos atribuídos: ${money(r.charges)}\nTransferências registradas: ${money(r.received)}\nResultado: QUITADO\n\nRecibo gerado pelo Meu Patrimônio.`;
-  const url=whatsAppContactLink(db.settings.peoplePhones?.[person],message);if(!url){toast('Cadastre o WhatsApp de '+person+' em Ajustes → Pessoas.');setPage('ajustes');return}window.open(url,'_blank','noopener,noreferrer');
+  if(!openWhatsAppChat(db.settings.peoplePhones?.[person],message)){toast('Cadastre o WhatsApp de '+person+' em Ajustes → Pessoas.');setPage('ajustes')}
 }
 
 function quickExpense(){
