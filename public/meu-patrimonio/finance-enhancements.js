@@ -1,3 +1,25 @@
+function nubankCardRouting(){
+  const cards=db.cards||[];
+  const physical=cards.find(card=>/nubank/i.test(card.name)&&/(f.sico|principal)/i.test(card.name))||cards.find(card=>/(f.sico|principal)/i.test(card.name));
+  if(!physical)return{physical:null,virtualIds:new Set()};
+  const family=name=>String(name||'').toLowerCase().replace(/nubank/g,'').replace(/cart.o/g,'').replace(/f.sico|virtual|principal/g,'').replace(/[()\s._-]+/g,'').trim();
+  const key=family(physical.name),virtuals=cards.filter(card=>card.id!==physical.id&&/virtual/i.test(card.name)&&family(card.name)===key);
+  return{physical,virtualIds:new Set(virtuals.map(card=>card.id))};
+}
+function migrateVirtualCardPurchases(){
+  const {physical,virtualIds}=nubankCardRouting();
+  if(!physical||!virtualIds.size)return false;
+  let changed=false;
+  for(const item of db.items||[])if(item.kind==='expense'&&virtualIds.has(item.cardId)){item.cardId=physical.id;changed=true}
+  return changed;
+}
+const readCloudStateWithCardRouting=readCloudState;
+readCloudState=async function(){await readCloudStateWithCardRouting();if(migrateVirtualCardPurchases())save()};
+cardSelect=function(item){
+  const {physical,virtualIds}=nubankCardRouting(),cards=(db.cards||[]).filter(card=>!virtualIds.has(card.id));
+  const selectedId=virtualIds.has(item?.cardId)?physical?.id:item?.cardId;
+  return '<div class="field"><label>Cartão</label><select name="cardId"><option value="">Sem cartão / não vinculado</option>'+cards.map(card=>'<option value="'+esc(card.id)+'" '+(selectedId===card.id||(!item&&!selectedId&&physical?.id===card.id)?'selected':'')+'>'+esc(card.name)+'</option>').join('')+'</select></div>';
+};
 const closedMonths=()=>db.settings.closedMonths||(db.settings.closedMonths=[]);
 const monthIsClosed=month=>closedMonths().includes(month);
 const personRollovers=()=>db.settings.personRollovers||(db.settings.personRollovers={});
@@ -48,6 +70,14 @@ function quickExpense(){
   document.querySelector('#modalBody [name="name"]')?.focus();
 }
 
+const originalQuickExpenseWithCardRouting=quickExpense;
+quickExpense=function(){
+  originalQuickExpenseWithCardRouting();
+  const {physical,virtualIds}=nubankCardRouting(),select=document.querySelector('#modalBody [name="cardId"]');
+  if(!select)return;
+  for(const option of [...select.options])if(virtualIds.has(option.value))option.remove();
+  if(physical&&!select.value)select.value=physical.id;
+};
 const baseOpenAssetForClass=openAsset;
 openAsset=function(id){
   const existingIds=new Set(db.assets.map(a=>a.id));baseOpenAssetForClass(id);const form=document.querySelector('#modalForm'),grid=form?.querySelector('.form-grid');if(!form||!grid)return;
