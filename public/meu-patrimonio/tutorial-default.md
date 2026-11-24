@@ -212,11 +212,9 @@ O botão **PF · Pessoal / PJ · Empresa** no cabeçalho alterna ambientes indep
 
 O acesso ao ambiente PJ é reservado ao nível 5. Usuários de outros níveis não conseguem alternar para esse perfil.
 
-## 16. Open Finance / conectar banco
+## 16. Conexão bancária
 
-Na aba **Patrimônio**, procure **Minhas contas bancárias** e toque em **Conectar meu banco**. Escolha a instituição na janela Pluggy e siga o consentimento apresentado pela própria instituição. Depois da autorização, o sistema importa os saldos, extratos recentes e faturas disponibilizadas. Use **Atualizar dados** para consultar novamente. A integração é somente para leitura: não paga contas nem movimenta valores. Para cancelar o consentimento, use o canal oficial da instituição financeira.
-
-A disponibilidade depende da instituição, do consentimento e dos dados que ela oferece. O saldo conectado é um retrato de sincronização, não substitui o extrato oficial. Se a tela disser que a conexão não está ativada, o administrador precisa configurar as credenciais do provedor no ambiente publicado.
+A conexão automática com instituições bancárias está indisponível no momento. Cadastre ou atualize os saldos manualmente em **Patrimônio**. O sistema não solicitará autorização bancária nessa tela.
 
 ## 17. Admin e níveis de acesso
 
