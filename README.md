@@ -16,6 +16,8 @@ Continue developing this project in the [Lovable editor](https://lovable.dev/pro
 
 ## Development
 
+Consulte o [Guia completo do usuário](docs/GUIA_COMPLETO_DO_USUARIO.md) para instruções de navegação, lançamentos, rateios, faturas, patrimônio, relatórios, perfis PF/PJ e administração de acessos.
+
 Prefer working locally? You need Node.js and npm — [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating).
 
 ```sh
