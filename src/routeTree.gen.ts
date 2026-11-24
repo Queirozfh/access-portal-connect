@@ -13,8 +13,10 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as ApiPublicAdminUsersRouteImport } from './routes/api/public/admin-users'
 import { Route as ApiPublicAiUsageRouteImport } from './routes/api/public/ai-usage'
 import { Route as ApiPublicDollarRateRouteImport } from './routes/api/public/dollar-rate'
+import { Route as ApiPublicFeatureAccessRouteImport } from './routes/api/public/feature-access'
 import { Route as ApiPublicPlannedPurchaseRouteImport } from './routes/api/public/planned-purchase'
 import { Route as ApiPublicPluggyRouteImport } from './routes/api/public/pluggy'
+import { Route as ApiPublicTutorialRouteImport } from './routes/api/public/tutorial'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -36,6 +38,11 @@ const ApiPublicDollarRateRoute = ApiPublicDollarRateRouteImport.update({
   path: '/api/public/dollar-rate',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicFeatureAccessRoute = ApiPublicFeatureAccessRouteImport.update({
+  id: '/api/public/feature-access',
+  path: '/api/public/feature-access',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPublicPlannedPurchaseRoute =
   ApiPublicPlannedPurchaseRouteImport.update({
     id: '/api/public/planned-purchase',
@@ -47,22 +54,31 @@ const ApiPublicPluggyRoute = ApiPublicPluggyRouteImport.update({
   path: '/api/public/pluggy',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicTutorialRoute = ApiPublicTutorialRouteImport.update({
+  id: '/api/public/tutorial',
+  path: '/api/public/tutorial',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/api/public/admin-users': typeof ApiPublicAdminUsersRoute
   '/api/public/ai-usage': typeof ApiPublicAiUsageRoute
   '/api/public/dollar-rate': typeof ApiPublicDollarRateRoute
+  '/api/public/feature-access': typeof ApiPublicFeatureAccessRoute
   '/api/public/planned-purchase': typeof ApiPublicPlannedPurchaseRoute
   '/api/public/pluggy': typeof ApiPublicPluggyRoute
+  '/api/public/tutorial': typeof ApiPublicTutorialRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/api/public/admin-users': typeof ApiPublicAdminUsersRoute
   '/api/public/ai-usage': typeof ApiPublicAiUsageRoute
   '/api/public/dollar-rate': typeof ApiPublicDollarRateRoute
+  '/api/public/feature-access': typeof ApiPublicFeatureAccessRoute
   '/api/public/planned-purchase': typeof ApiPublicPlannedPurchaseRoute
   '/api/public/pluggy': typeof ApiPublicPluggyRoute
+  '/api/public/tutorial': typeof ApiPublicTutorialRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -70,8 +86,10 @@ export interface FileRoutesById {
   '/api/public/admin-users': typeof ApiPublicAdminUsersRoute
   '/api/public/ai-usage': typeof ApiPublicAiUsageRoute
   '/api/public/dollar-rate': typeof ApiPublicDollarRateRoute
+  '/api/public/feature-access': typeof ApiPublicFeatureAccessRoute
   '/api/public/planned-purchase': typeof ApiPublicPlannedPurchaseRoute
   '/api/public/pluggy': typeof ApiPublicPluggyRoute
+  '/api/public/tutorial': typeof ApiPublicTutorialRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -80,24 +98,30 @@ export interface FileRouteTypes {
     | '/api/public/admin-users'
     | '/api/public/ai-usage'
     | '/api/public/dollar-rate'
+    | '/api/public/feature-access'
     | '/api/public/planned-purchase'
     | '/api/public/pluggy'
+    | '/api/public/tutorial'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/api/public/admin-users'
     | '/api/public/ai-usage'
     | '/api/public/dollar-rate'
+    | '/api/public/feature-access'
     | '/api/public/planned-purchase'
     | '/api/public/pluggy'
+    | '/api/public/tutorial'
   id:
     | '__root__'
     | '/'
     | '/api/public/admin-users'
     | '/api/public/ai-usage'
     | '/api/public/dollar-rate'
+    | '/api/public/feature-access'
     | '/api/public/planned-purchase'
     | '/api/public/pluggy'
+    | '/api/public/tutorial'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -105,8 +129,10 @@ export interface RootRouteChildren {
   ApiPublicAdminUsersRoute: typeof ApiPublicAdminUsersRoute
   ApiPublicAiUsageRoute: typeof ApiPublicAiUsageRoute
   ApiPublicDollarRateRoute: typeof ApiPublicDollarRateRoute
+  ApiPublicFeatureAccessRoute: typeof ApiPublicFeatureAccessRoute
   ApiPublicPlannedPurchaseRoute: typeof ApiPublicPlannedPurchaseRoute
   ApiPublicPluggyRoute: typeof ApiPublicPluggyRoute
+  ApiPublicTutorialRoute: typeof ApiPublicTutorialRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -139,6 +165,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicDollarRateRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/feature-access': {
+      id: '/api/public/feature-access'
+      path: '/api/public/feature-access'
+      fullPath: '/api/public/feature-access'
+      preLoaderRoute: typeof ApiPublicFeatureAccessRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/planned-purchase': {
       id: '/api/public/planned-purchase'
       path: '/api/public/planned-purchase'
@@ -153,6 +186,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicPluggyRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/tutorial': {
+      id: '/api/public/tutorial'
+      path: '/api/public/tutorial'
+      fullPath: '/api/public/tutorial'
+      preLoaderRoute: typeof ApiPublicTutorialRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -161,8 +201,10 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicAdminUsersRoute: ApiPublicAdminUsersRoute,
   ApiPublicAiUsageRoute: ApiPublicAiUsageRoute,
   ApiPublicDollarRateRoute: ApiPublicDollarRateRoute,
+  ApiPublicFeatureAccessRoute: ApiPublicFeatureAccessRoute,
   ApiPublicPlannedPurchaseRoute: ApiPublicPlannedPurchaseRoute,
   ApiPublicPluggyRoute: ApiPublicPluggyRoute,
+  ApiPublicTutorialRoute: ApiPublicTutorialRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
