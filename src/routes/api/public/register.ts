@@ -4,6 +4,17 @@ import type { Database } from '@/integrations/supabase/types';
 
 const json=(body:unknown,status=200)=>new Response(JSON.stringify(body),{status,headers:{'content-type':'application/json'}});
 const attempts=new Map<string,{count:number;until:number}>();
+function signupErrorMessage(error:{code?:string;message?:string;status?:number}):string{
+  const code=String(error.code||'').toLowerCase(),message=String(error.message||'').toLowerCase();
+  if(code==='signup_disabled'||/signups? (are )?disabled|signups? not allowed/.test(message))return 'O cadastro público está desativado na autenticação do projeto. Ative novos cadastros nas configurações do Supabase.';
+  if(code==='email_address_not_authorized'||/email address not authorized/.test(message))return 'O serviço de e-mail atual não está autorizado a enviar para este endereço. Configure um servidor SMTP próprio no Supabase.';
+  if(code==='over_email_send_rate_limit'||/email rate limit exceeded/.test(message))return 'O limite de envio de e-mails foi atingido. Aguarde antes de tentar novamente ou configure um SMTP próprio.';
+  if(code==='weak_password'||/password.*(weak|characters|strength)/.test(message))return 'A senha não atende aos requisitos de segurança do projeto. Escolha outra senha com pelo menos 8 caracteres.';
+  if(code==='user_already_exists'||/user already registered|already been registered/.test(message))return 'Não foi possível usar este e-mail. Se você já tem uma conta, escolha “Já tenho uma conta · Entrar”.';
+  if(error.status===429)return 'O serviço limitou novas tentativas. Aguarde alguns minutos e tente novamente.';
+  if(/sending.*(confirmation|email)|smtp|email.*provider/.test(message))return 'O serviço de confirmação por e-mail falhou. Configure ou revise o SMTP nas configurações de autenticação do Supabase.';
+  return 'Não foi possível concluir o cadastro. Verifique o e-mail e a senha e tente novamente.';
+}
 
 export const Route=createFileRoute('/api/public/register')({
   server:{handlers:{POST:async({request})=>{
@@ -20,7 +31,7 @@ export const Route=createFileRoute('/api/public/register')({
     if(!url||!key)return json({error:'O cadastro está temporariamente indisponível.'},503);
     const authClient=createClient<Database>(url,key,{auth:{persistSession:false,autoRefreshToken:false}});
     const {data,error}=await authClient.auth.signUp({email,password});
-    if(error)return json({error:'Não foi possível concluir o cadastro. Verifique os dados e tente novamente.'},400);
+    if(error){console.error('[register] Supabase signup failed',{code:error.code||'unknown',status:error.status||0});return json({error:signupErrorMessage(error)},error.status===429?429:400)}
     const user=data.user;
     if(!user)return json({error:'Não foi possível concluir o cadastro. Tente novamente.'},400);
     if(Array.isArray(user.identities)&&user.identities.length===0)return json({ok:true,confirmationRequired:true});
