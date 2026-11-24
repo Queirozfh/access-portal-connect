@@ -214,7 +214,7 @@ O acesso ao ambiente PJ é reservado ao nível 5. Usuários de outros níveis n�
 
 ## 16. Open Finance / conectar banco
 
-Na aba **Patrimônio**, procure **Minhas contas bancárias** e toque em **Conectar meu banco**. Escolha a instituição na janela do provedor, autentique-se no fluxo apresentado pela própria instituição/provedor e autorize os produtos solicitados. Ao concluir, as contas e faturas disponibilizadas aparecem no app. Use **Atualizar saldos e faturas** para sincronizar de novo. A versão atual oferece conexão e sincronização; para revogar o consentimento, use o canal oficial da instituição/provedor, pois não há botão de desconectar nesta tela.
+Na aba **Patrimônio**, procure **Minhas contas bancárias** e toque em **Conectar meu banco**. Escolha a instituição na janela Pluggy e siga o consentimento apresentado pela própria instituição. Depois da autorização, o sistema importa os saldos, extratos recentes e faturas disponibilizadas. Use **Atualizar dados** para consultar novamente. A integração é somente para leitura: não paga contas nem movimenta valores. Para cancelar o consentimento, use o canal oficial da instituição financeira.
 
 A disponibilidade depende da instituição, do consentimento e dos dados que ela oferece. O saldo conectado é um retrato de sincronização, não substitui o extrato oficial. Se a tela disser que a conexão não está ativada, o administrador precisa configurar as credenciais do provedor no ambiente publicado.
 

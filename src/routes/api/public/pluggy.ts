@@ -35,6 +35,23 @@ function results<T>(data: unknown): T[] {
   return [];
 }
 
+type PluggyTransactionPage = { results?: Record<string, unknown>[]; next?: string | null };
+
+async function pluggyTransactions(accountId: string, key: string, signal?: AbortSignal) {
+  const transactions: Record<string, unknown>[] = [];
+  let path = `/v2/transactions?accountId=${encodeURIComponent(accountId)}`;
+  // The endpoint returns 500 records per page and a query string cursor in `next`.
+  // Keep each sync bounded: at most 5,000 transactions are fetched per account.
+  for (let page = 0; path && page < 10; page += 1) {
+    const data = await pluggyGet<PluggyTransactionPage>(path, key, signal);
+    transactions.push(...(data.results || []));
+    if (!data.next) return { transactions, complete: true };
+    if (!data.next.startsWith('?')) throw new Error('A Pluggy retornou um cursor de transações inválido.');
+    path = `/v2/transactions${data.next}`;
+  }
+  return { transactions, complete: false };
+}
+
 export const Route = createFileRoute('/api/public/pluggy')({
   server: { handlers: { POST: async ({ request }) => {
     const auth = await portalAuth(request);
@@ -65,6 +82,22 @@ export const Route = createFileRoute('/api/public/pluggy')({
         institution: String(item.connector?.name || 'Pluggy Bank'),
       }));
       const bills: Record<string, unknown>[] = [];
+      const transactions: Record<string, unknown>[] = [];
+      let transactionsComplete = true;
+      for (const account of accounts.filter((entry) => ['BANK', 'CREDIT'].includes(entry.type.toUpperCase()))) {
+        const page = await pluggyTransactions(String(account.id), key, request.signal);
+        transactionsComplete = transactionsComplete && page.complete;
+        transactions.push(...page.transactions.map((transaction) => ({
+          id: String(transaction.id || ''), itemId: item.id, accountId: String(account.id),
+          accountName: String(account.name || 'Conta'), institution: String(item.connector?.name || 'Pluggy Bank'),
+          date: transaction.date || null, description: String(transaction.description || transaction.descriptionRaw || 'Movimentação'),
+          category: transaction.category || null, amount: Number(transaction.amount || 0),
+          currencyCode: String(transaction.currencyCode || 'BRL'), type: String(transaction.type || ''),
+          status: String(transaction.status || ''), operationType: transaction.operationType || null,
+          installmentNumber: (transaction.creditCardMetadata as Record<string, unknown> | undefined)?.installmentNumber || null,
+          totalInstallments: (transaction.creditCardMetadata as Record<string, unknown> | undefined)?.totalInstallments || null,
+        })));
+      }
       for (const account of accounts.filter((entry) => entry.type.toUpperCase() === 'CREDIT' || entry.subtype.toUpperCase() === 'CREDIT_CARD')) {
         const data = await pluggyGet<unknown>(`/bills?accountId=${encodeURIComponent(account.id)}`, key, request.signal);
         for (const bill of results<Record<string, unknown>>(data)) bills.push({
@@ -74,7 +107,9 @@ export const Route = createFileRoute('/api/public/pluggy')({
           minimumPaymentAmount: Number(bill.minimumPaymentAmount || 0),
         });
       }
-      return json({ item: { id: item.id, institution: item.connector?.name || 'Pluggy Bank', status: item.status || 'UPDATED' }, accounts, bills, syncedAt: new Date().toISOString() });
+      transactions.sort((a, b) => String(b.date || '').localeCompare(String(a.date || '')));
+      const recentTransactions = transactions.slice(0, 1000);
+      return json({ item: { id: item.id, institution: item.connector?.name || 'Pluggy Bank', status: item.status || 'UPDATED' }, accounts, bills, transactions: recentTransactions, transactionsComplete: transactionsComplete && transactions.length <= recentTransactions.length, syncedAt: new Date().toISOString() });
     } catch (error) {
       if (request.signal.aborted) return new Response(null, { status: 499 });
       return json({ error: error instanceof Error ? error.message : 'Falha ao consultar a Pluggy.' }, 502);
