@@ -74,6 +74,12 @@ export const ACCESS_LEVEL_LABELS: Record<number, string> = {
 export const ALL_ACCESS_FEATURES = [...ACCESS_FEATURE_IDS];
 export const ACCESS_ADMIN_USER_ID = 'ad46a5e7-af23-4cff-b190-ea6b6140013d';
 
+export const SELF_SERVICE_SIGNUP_CUTOFF = '2026-11-24T00:00:00.000Z';
+
+export function defaultUserAccessLevel(createdAt?: string): number {
+  return createdAt && Date.parse(createdAt) >= Date.parse(SELF_SERVICE_SIGNUP_CUTOFF) ? 1 : 5;
+}
+
 export function defaultAccessFeatures(level: number): string[] {
   const safeLevel = Math.max(1, Math.min(5, Math.floor(level || 1)));
   return ACCESS_FEATURES.filter(feature => feature.minLevel <= safeLevel).map(feature => feature.id);
@@ -88,8 +94,9 @@ export async function accessPolicyForUser(userId: string) {
   if (targetError || !target.user) throw targetError || new Error('Usuário não encontrado.');
   if (adminError || !admin.user) throw adminError || new Error('Administrador principal não encontrado.');
   const metadata = target.user.app_metadata as { access_level?: number } | undefined;
-  // Accounts created before access levels were introduced retain full access.
-  const level = Math.max(1, Math.min(5, Number(metadata?.access_level) || 5));
+  // Accounts predating self-service registration retain their legacy full access.
+  const fallbackLevel = defaultUserAccessLevel(target.user.created_at);
+  const level = Math.max(1, Math.min(5, Number(metadata?.access_level) || fallbackLevel));
   const adminMetadata = admin.user.app_metadata as { access_policies?: Array<{ level: number; features: string[] }> } | undefined;
   const policy = adminMetadata?.access_policies?.find(item => Number(item.level) === level);
   const features = Array.isArray(policy?.features)

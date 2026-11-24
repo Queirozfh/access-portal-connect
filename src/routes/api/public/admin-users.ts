@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { createClient } from "@supabase/supabase-js";
 import type { Database } from "@/integrations/supabase/types";
 import { aiMonth } from '@/lib/ai-quota';
-import { ACCESS_ADMIN_USER_ID, ACCESS_FEATURE_IDS, defaultAccessFeatures } from '@/lib/access-control';
+import { ACCESS_ADMIN_USER_ID, ACCESS_FEATURE_IDS, defaultAccessFeatures, defaultUserAccessLevel } from '@/lib/access-control';
 
 const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json" } });
@@ -84,7 +84,7 @@ export const Route = createFileRoute("/api/public/admin-users")({
               } catch { /* ignore */ }
             }
             const key = (id: string) => (id === adminId ? (stats[id] ? id : "main") : id);
-            return json({ users: data.users.map((u) => { const metadata = u.app_metadata as { expires_at?: string; access_level?: number } | undefined; return ({ id: u.id, name: names[u.id] || names[key(u.id)] || "", stats: stats[u.id] || stats[key(u.id)] || null, expires_at: metadata?.expires_at || null, email: u.email, created_at: u.created_at, last_sign_in_at: u.last_sign_in_at, suspended: Boolean((u as { banned_until?: string }).banned_until && new Date(String((u as { banned_until?: string }).banned_until)).getTime() > Date.now()), admin: u.id === adminId, access_level: u.id === adminId ? 5 : Number(metadata?.access_level) || 5, ai_enabled: aiPermissions.get(u.id) ?? true, ai_used: aiUsage.get(u.id) ?? 0, ai_limit: u.id === adminId ? null : 4, access_levels_ready: true }); }) });
+            return json({ users: data.users.map((u) => { const metadata = u.app_metadata as { expires_at?: string; access_level?: number } | undefined; return ({ id: u.id, name: names[u.id] || names[key(u.id)] || "", stats: stats[u.id] || stats[key(u.id)] || null, expires_at: metadata?.expires_at || null, email: u.email, created_at: u.created_at, last_sign_in_at: u.last_sign_in_at, suspended: Boolean((u as { banned_until?: string }).banned_until && new Date(String((u as { banned_until?: string }).banned_until)).getTime() > Date.now()), admin: u.id === adminId, access_level: u.id === adminId ? 5 : Number(metadata?.access_level) || defaultUserAccessLevel(u.created_at), ai_enabled: aiPermissions.get(u.id) ?? true, ai_used: aiUsage.get(u.id) ?? 0, ai_limit: u.id === adminId ? null : 4, access_levels_ready: true }); }) });
           }
           case 'access-policies': {
             const { data, error } = await a.getUserById(ACCESS_ADMIN_USER_ID);

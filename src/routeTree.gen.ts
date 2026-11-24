@@ -17,6 +17,7 @@ import { Route as ApiPublicFeatureAccessRouteImport } from './routes/api/public/
 import { Route as ApiPublicGoogleCalendarConfigRouteImport } from './routes/api/public/google-calendar-config'
 import { Route as ApiPublicPlannedPurchaseRouteImport } from './routes/api/public/planned-purchase'
 import { Route as ApiPublicPluggyRouteImport } from './routes/api/public/pluggy'
+import { Route as ApiPublicRegisterRouteImport } from './routes/api/public/register'
 import { Route as ApiPublicTutorialRouteImport } from './routes/api/public/tutorial'
 
 const IndexRoute = IndexRouteImport.update({
@@ -61,6 +62,11 @@ const ApiPublicPluggyRoute = ApiPublicPluggyRouteImport.update({
   path: '/api/public/pluggy',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicRegisterRoute = ApiPublicRegisterRouteImport.update({
+  id: '/api/public/register',
+  path: '/api/public/register',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPublicTutorialRoute = ApiPublicTutorialRouteImport.update({
   id: '/api/public/tutorial',
   path: '/api/public/tutorial',
@@ -76,6 +82,7 @@ export interface FileRoutesByFullPath {
   '/api/public/google-calendar-config': typeof ApiPublicGoogleCalendarConfigRoute
   '/api/public/planned-purchase': typeof ApiPublicPlannedPurchaseRoute
   '/api/public/pluggy': typeof ApiPublicPluggyRoute
+  '/api/public/register': typeof ApiPublicRegisterRoute
   '/api/public/tutorial': typeof ApiPublicTutorialRoute
 }
 export interface FileRoutesByTo {
@@ -87,6 +94,7 @@ export interface FileRoutesByTo {
   '/api/public/google-calendar-config': typeof ApiPublicGoogleCalendarConfigRoute
   '/api/public/planned-purchase': typeof ApiPublicPlannedPurchaseRoute
   '/api/public/pluggy': typeof ApiPublicPluggyRoute
+  '/api/public/register': typeof ApiPublicRegisterRoute
   '/api/public/tutorial': typeof ApiPublicTutorialRoute
 }
 export interface FileRoutesById {
@@ -99,6 +107,7 @@ export interface FileRoutesById {
   '/api/public/google-calendar-config': typeof ApiPublicGoogleCalendarConfigRoute
   '/api/public/planned-purchase': typeof ApiPublicPlannedPurchaseRoute
   '/api/public/pluggy': typeof ApiPublicPluggyRoute
+  '/api/public/register': typeof ApiPublicRegisterRoute
   '/api/public/tutorial': typeof ApiPublicTutorialRoute
 }
 export interface FileRouteTypes {
@@ -112,6 +121,7 @@ export interface FileRouteTypes {
     | '/api/public/google-calendar-config'
     | '/api/public/planned-purchase'
     | '/api/public/pluggy'
+    | '/api/public/register'
     | '/api/public/tutorial'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -123,6 +133,7 @@ export interface FileRouteTypes {
     | '/api/public/google-calendar-config'
     | '/api/public/planned-purchase'
     | '/api/public/pluggy'
+    | '/api/public/register'
     | '/api/public/tutorial'
   id:
     | '__root__'
@@ -134,6 +145,7 @@ export interface FileRouteTypes {
     | '/api/public/google-calendar-config'
     | '/api/public/planned-purchase'
     | '/api/public/pluggy'
+    | '/api/public/register'
     | '/api/public/tutorial'
   fileRoutesById: FileRoutesById
 }
@@ -146,6 +158,7 @@ export interface RootRouteChildren {
   ApiPublicGoogleCalendarConfigRoute: typeof ApiPublicGoogleCalendarConfigRoute
   ApiPublicPlannedPurchaseRoute: typeof ApiPublicPlannedPurchaseRoute
   ApiPublicPluggyRoute: typeof ApiPublicPluggyRoute
+  ApiPublicRegisterRoute: typeof ApiPublicRegisterRoute
   ApiPublicTutorialRoute: typeof ApiPublicTutorialRoute
 }
 
@@ -207,6 +220,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicPluggyRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/register': {
+      id: '/api/public/register'
+      path: '/api/public/register'
+      fullPath: '/api/public/register'
+      preLoaderRoute: typeof ApiPublicRegisterRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/tutorial': {
       id: '/api/public/tutorial'
       path: '/api/public/tutorial'
@@ -226,6 +246,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicGoogleCalendarConfigRoute: ApiPublicGoogleCalendarConfigRoute,
   ApiPublicPlannedPurchaseRoute: ApiPublicPlannedPurchaseRoute,
   ApiPublicPluggyRoute: ApiPublicPluggyRoute,
+  ApiPublicRegisterRoute: ApiPublicRegisterRoute,
   ApiPublicTutorialRoute: ApiPublicTutorialRoute,
 }
 export const routeTree = rootRouteImport
