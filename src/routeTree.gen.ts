@@ -14,6 +14,7 @@ import { Route as ApiPublicAdminUsersRouteImport } from './routes/api/public/adm
 import { Route as ApiPublicAiUsageRouteImport } from './routes/api/public/ai-usage'
 import { Route as ApiPublicDollarRateRouteImport } from './routes/api/public/dollar-rate'
 import { Route as ApiPublicFeatureAccessRouteImport } from './routes/api/public/feature-access'
+import { Route as ApiPublicGoogleCalendarConfigRouteImport } from './routes/api/public/google-calendar-config'
 import { Route as ApiPublicPlannedPurchaseRouteImport } from './routes/api/public/planned-purchase'
 import { Route as ApiPublicPluggyRouteImport } from './routes/api/public/pluggy'
 import { Route as ApiPublicTutorialRouteImport } from './routes/api/public/tutorial'
@@ -43,6 +44,12 @@ const ApiPublicFeatureAccessRoute = ApiPublicFeatureAccessRouteImport.update({
   path: '/api/public/feature-access',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicGoogleCalendarConfigRoute =
+  ApiPublicGoogleCalendarConfigRouteImport.update({
+    id: '/api/public/google-calendar-config',
+    path: '/api/public/google-calendar-config',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPublicPlannedPurchaseRoute =
   ApiPublicPlannedPurchaseRouteImport.update({
     id: '/api/public/planned-purchase',
@@ -66,6 +73,7 @@ export interface FileRoutesByFullPath {
   '/api/public/ai-usage': typeof ApiPublicAiUsageRoute
   '/api/public/dollar-rate': typeof ApiPublicDollarRateRoute
   '/api/public/feature-access': typeof ApiPublicFeatureAccessRoute
+  '/api/public/google-calendar-config': typeof ApiPublicGoogleCalendarConfigRoute
   '/api/public/planned-purchase': typeof ApiPublicPlannedPurchaseRoute
   '/api/public/pluggy': typeof ApiPublicPluggyRoute
   '/api/public/tutorial': typeof ApiPublicTutorialRoute
@@ -76,6 +84,7 @@ export interface FileRoutesByTo {
   '/api/public/ai-usage': typeof ApiPublicAiUsageRoute
   '/api/public/dollar-rate': typeof ApiPublicDollarRateRoute
   '/api/public/feature-access': typeof ApiPublicFeatureAccessRoute
+  '/api/public/google-calendar-config': typeof ApiPublicGoogleCalendarConfigRoute
   '/api/public/planned-purchase': typeof ApiPublicPlannedPurchaseRoute
   '/api/public/pluggy': typeof ApiPublicPluggyRoute
   '/api/public/tutorial': typeof ApiPublicTutorialRoute
@@ -87,6 +96,7 @@ export interface FileRoutesById {
   '/api/public/ai-usage': typeof ApiPublicAiUsageRoute
   '/api/public/dollar-rate': typeof ApiPublicDollarRateRoute
   '/api/public/feature-access': typeof ApiPublicFeatureAccessRoute
+  '/api/public/google-calendar-config': typeof ApiPublicGoogleCalendarConfigRoute
   '/api/public/planned-purchase': typeof ApiPublicPlannedPurchaseRoute
   '/api/public/pluggy': typeof ApiPublicPluggyRoute
   '/api/public/tutorial': typeof ApiPublicTutorialRoute
@@ -99,6 +109,7 @@ export interface FileRouteTypes {
     | '/api/public/ai-usage'
     | '/api/public/dollar-rate'
     | '/api/public/feature-access'
+    | '/api/public/google-calendar-config'
     | '/api/public/planned-purchase'
     | '/api/public/pluggy'
     | '/api/public/tutorial'
@@ -109,6 +120,7 @@ export interface FileRouteTypes {
     | '/api/public/ai-usage'
     | '/api/public/dollar-rate'
     | '/api/public/feature-access'
+    | '/api/public/google-calendar-config'
     | '/api/public/planned-purchase'
     | '/api/public/pluggy'
     | '/api/public/tutorial'
@@ -119,6 +131,7 @@ export interface FileRouteTypes {
     | '/api/public/ai-usage'
     | '/api/public/dollar-rate'
     | '/api/public/feature-access'
+    | '/api/public/google-calendar-config'
     | '/api/public/planned-purchase'
     | '/api/public/pluggy'
     | '/api/public/tutorial'
@@ -130,6 +143,7 @@ export interface RootRouteChildren {
   ApiPublicAiUsageRoute: typeof ApiPublicAiUsageRoute
   ApiPublicDollarRateRoute: typeof ApiPublicDollarRateRoute
   ApiPublicFeatureAccessRoute: typeof ApiPublicFeatureAccessRoute
+  ApiPublicGoogleCalendarConfigRoute: typeof ApiPublicGoogleCalendarConfigRoute
   ApiPublicPlannedPurchaseRoute: typeof ApiPublicPlannedPurchaseRoute
   ApiPublicPluggyRoute: typeof ApiPublicPluggyRoute
   ApiPublicTutorialRoute: typeof ApiPublicTutorialRoute
@@ -172,6 +186,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicFeatureAccessRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/google-calendar-config': {
+      id: '/api/public/google-calendar-config'
+      path: '/api/public/google-calendar-config'
+      fullPath: '/api/public/google-calendar-config'
+      preLoaderRoute: typeof ApiPublicGoogleCalendarConfigRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/planned-purchase': {
       id: '/api/public/planned-purchase'
       path: '/api/public/planned-purchase'
@@ -202,6 +223,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicAiUsageRoute: ApiPublicAiUsageRoute,
   ApiPublicDollarRateRoute: ApiPublicDollarRateRoute,
   ApiPublicFeatureAccessRoute: ApiPublicFeatureAccessRoute,
+  ApiPublicGoogleCalendarConfigRoute: ApiPublicGoogleCalendarConfigRoute,
   ApiPublicPlannedPurchaseRoute: ApiPublicPlannedPurchaseRoute,
   ApiPublicPluggyRoute: ApiPublicPluggyRoute,
   ApiPublicTutorialRoute: ApiPublicTutorialRoute,
