@@ -19,6 +19,5 @@ enhancedHome=function(){
   if(typeof isBusinessProfile==='function'&&isBusinessProfile())return html;
   const month=selected();
   let refreshed=html.replace('<div class="grid two-col premium-panels">',`${dashboardCategoryCard(month)}<div class="grid two-col premium-panels">`);
-  refreshed=refreshed.replace(/<section class="card premium-recent">[\s\S]*?<\/section>/,`<section class="card premium-recent"><div class="section-head"><div><h2>Movimentações recentes</h2><p>Lançamentos de ${esc(monthLabel(month))}</p></div><button class="btn secondary" data-page="despesas">Ver lançamentos</button></div>${dashboardActivityCards(month)}</section>`);
   return refreshed;
 };

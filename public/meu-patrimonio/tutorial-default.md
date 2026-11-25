@@ -1,6 +1,6 @@
 # Guia completo do Meu Patrimônio
 
-Este manual explica as telas, os campos e os principais fluxos do aplicativo Meu Patrimônio. Os nomes dos menus correspondem à versão do projeto revisada em 24 de novembro de 2026. A aparência pode variar um pouco entre computador e celular, mas os recursos e a lógica são os mesmos.
+Este manual explica as telas, os campos e os principais fluxos do aplicativo Meu Patrimônio. Os nomes dos menus correspondem à versão atual do aplicativo. A aparência pode variar um pouco entre computador e celular, mas os recursos e a lógica são os mesmos.
 
 ## 1. Conceitos básicos
 
@@ -27,6 +27,7 @@ As compras são registradas como itens individuais e podem ser associadas a um c
 3. Selecione a área desejada. O título do cabeçalho mostra a tela atual.
 4. O avatar no canto superior abre o menu de perfil, onde é possível editar o nome, alterar a senha e sair.
 5. O botão de tema alterna a aparência disponível. O ícone de olho oculta ou revela valores monetários na tela.
+6. A navegação agrupa os recursos em **Lançamentos**, **Cartões e parcelas** e **Análise e ferramentas**. Use **Calculadoras** para os simuladores e **Cobranças** para os acertos por pessoa.
 
 Se o aplicativo estiver sem conexão, uma sessão já autenticada pode abrir os dados locais disponíveis e enfileirar alterações para sincronizar quando a rede voltar. A conexão com a nuvem e bancos não funciona offline; aguarde o indicador de sincronização antes de confiar que a fila foi enviada.
 
@@ -40,13 +41,13 @@ A tela **Início** reúne o panorama do mês selecionado:
 - **A receber:** reembolsos ou valores de terceiros ainda pendentes.
 - **Alerta de renda comprometida:** compara as despesas do titular com as entradas e usa os limites amarelo e vermelho configurados em Ajustes.
 - **Gráfico temporal:** apresenta a evolução dos meses mostrados; tocar em um mês pode selecioná-lo.
-- **Movimentações recentes:** lista os lançamentos do período e oferece atalhos para as áreas correspondentes.
+- **Reembolsos em aberto:** destaca acertos pendentes e permite registrar recebimentos.
 
 Use o botão **Adicionar** para começar uma despesa. Para cadastrar entrada, use **A receber**.
 
 ## 4. A receber
 
-Esta área registra salários, receitas, serviços faturados ou outros valores que entram.
+Esta área registra salários, receitas, serviços faturados ou outros valores que entram. Os lançamentos ficam separados das cobranças e do extrato acumulado por pessoa, disponíveis na aba **Cobranças**.
 
 ### Criar uma entrada
 
@@ -57,18 +58,11 @@ Esta área registra salários, receitas, serviços faturados ou outros valores q
 
 Para registrar entrada recebida, use a ação de recebimento no lançamento e informe o valor/data solicitados. Se o valor entrar em parcelas, registre cada recebimento parcial; o saldo em aberto é recalculado.
 
-### Extrato por pessoa ou cliente
+## 5. Cobranças
 
-Na área de cobrança por pessoa, os cartões resumem o valor previsto, o recebido e o saldo a receber no mês. O **histórico por pessoa** abre o acumulado de meses: cobranças, transferências/recebimentos, crédito remanescente ou saldo devedor transitado. O ajuste de saldo permite decidir se o valor anterior será abatido ou acrescentado ao acerto atual.
+Esta área concentra a cobrança por pessoa/cliente e o extrato acumulado. Os cartões mostram os itens do mês, total previsto, recebido e saldo em aberto. O histórico apresenta valores de meses anteriores e saldo remanescente. Configure o WhatsApp e a chave Pix pelas ações da tela; o app prepara a conversa e não envia mensagem automaticamente. O comprovante visual reúne os itens e o total efetivamente devido, sem QR Code Pix.
 
-### Cobrança e recibos
-
-- Configure números de WhatsApp por pessoa e a chave Pix nas ações de cobrança/configuração.
-- A ação de WhatsApp prepara a cobrança e abre a conversa para revisão; confirme o conteúdo no próprio WhatsApp. O aplicativo não envia mensagens sem sua confirmação.
-- O comprovante visual da pessoa mostra a lista dos itens e o total efetivamente atribuído a ela. Salve ou compartilhe a imagem pelo próprio dispositivo; não há QR Code Pix nessa imagem.
-- O recibo de quitação depende de os pagamentos terem sido registrados corretamente para o mês.
-
-## 5. Despesas
+## 6. Despesas
 
 Use **Despesas** para manter a lista de compras, contas, parcelas, assinaturas e outros gastos.
 
@@ -107,13 +101,13 @@ Os percentuais padrão podem ser salvos em **Ajustes → Planejamento e critéri
 
 O botão **＋** fixo abre um formulário compacto para registrar rapidamente uma despesa com descrição, valor e responsável/cartão. Use-o para anotar o gasto sem sair da tela atual e complete categoria, parcelas ou rateio depois, se necessário.
 
-## 6. Radar de assinaturas
+## 7. Radar de assinaturas
 
 O radar mostra despesas marcadas como recorrentes ou cuja categoria identifica assinatura, desde que estejam ativas no mês selecionado. A tabela informa serviço, categoria, responsável, cartão, custo mensal e projeção anual (valor mensal multiplicado por 12).
 
 Use **Editar** para corrigir valor, categoria, pessoa, cartão ou recorrência na origem do lançamento. Se a assinatura tiver terminado, edite o cadastro e informe o fim/cancele a recorrência; assim ela deixa de aparecer nos meses seguintes. A projeção anual é uma estimativa, não uma cobrança futura confirmada.
 
-## 7. Faturas e reembolsos
+## 8. Faturas e reembolsos
 
 Esta área agrupa os gastos do mês e os acertos com pessoas.
 
@@ -126,17 +120,17 @@ Esta área agrupa os gastos do mês e os acertos com pessoas.
 
 Para cadastrar cartão, informe nome, limite, dia de fechamento e dia de vencimento em **Cartões e limites**. Vincule compras ao cartão correto para que o comprometimento seja calculado adequadamente. Disponível estimado não é o limite oficial atualizado pelo banco.
 
-## 8. Compras e parcelas
+## 9. Compras e parcelas
 
 Esta tela apresenta os compromissos parcelados e recorrentes numa projeção mês a mês. Cada linha representa uma compra/assinatura e cada célula preenchida indica em qual mês há parcela; a fração indica número da parcela e total (ex.: 4/10).
 
 Use a seleção do mês para deslocar o horizonte e conferir quando cada item começa ou termina. Se uma parcela aparecer no mês errado, edite o lançamento de origem em Despesas, verifique mês inicial e parcela inicial e salve. A linha do tempo e o calendário de parcelas são visões de consulta dos lançamentos; eles não criam pagamentos por si.
 
-## 9. Linha do tempo
+## 10. Linha do tempo
 
 Apresenta uma visão expandida dos próximos meses e das parcelas que recaem em cada período. Use a rolagem principal da página para percorrer o conteúdo. A legenda informa a pessoa ou o tipo de item conforme as cores. A visualização é baseada nos registros atuais; corrija o cadastro de origem se a parcela estiver incorreta.
 
-## 10. Patrimônio
+## 11. Patrimônio
 
 Registre cada **aporte** como valor positivo e cada **retirada** como valor negativo. Escolha instituição, mês e moeda (BRL ou USD). O valor em dólar é convertido usando a cotação de referência cadastrada/atualizada. Movimentos de um mesmo banco acumulam ao longo dos meses.
 
@@ -148,10 +142,9 @@ Registre cada **aporte** como valor positivo e cada **retirada** como valor nega
 - **Reserva de emergência:** usa os seis meses fechados anteriores, categorias marcadas como essenciais e classes de ativos assinaladas como líquidas. A meta é configurada para 6 ou 12 meses nos Ajustes.
 - **Metas/potes:** crie nome, valor alvo, valor já guardado e prazo opcional. A barra mostra o percentual informado; ela não movimenta dinheiro automaticamente.
 - **Renda passiva:** permite editar saldo e taxa para simular renda mensal/anual bruta. É uma projeção simples, não promessa de rendimento.
-- **Simulador de juros compostos:** informe capital inicial, taxa, período e contribuição mensal opcional. Escolha taxa mensal ou anual; o cálculo converte taxa anual para equivalente mensal e apresenta saldo projetado.
 - **Cotação USD:** botão de atualizar busca uma referência diária; valores históricos já registrados não devem ser tratados como preço de mercado em tempo real.
 
-## 11. Compra planejada e simuladores
+## 12. Calculadoras
 
 ### Analisar compra
 
@@ -165,9 +158,13 @@ O simulador Price pede três dos quatro dados: prazo, taxa mensal, prestação e
 
 Informe valor FIPE do veículo atual, saldo devedor, preço do novo veículo, prazo e taxa mensal. A entrada líquida é FIPE menos saldo devedor; se for negativa, a diferença aumenta o financiamento. O sistema estima nova prestação e compara com saldo previsto e faturas habituais. É uma simulação, não análise de crédito ou proposta de banco.
 
+### Juros compostos
+
+Informe capital inicial, taxa, período e contribuição mensal opcional. Escolha taxa mensal ou anual; o cálculo converte a taxa anual para equivalente mensal e apresenta o saldo projetado.
+
 Alguns recursos podem aparecer com cadeado e indicação do nível necessário. A prévia é informativa; campos e envio permanecem bloqueados até que o administrador conceda a permissão.
 
-## 12. Relatórios
+## 13. Relatórios
 
 Os relatórios consolidam entradas, despesas, saldo, posição patrimonial, despesas por pessoa/categoria, gráfico de rosca e DRE/taxa de poupança mês a mês. O período selecionado define o contexto mensal ou o ano de referência.
 
@@ -176,7 +173,7 @@ Os relatórios consolidam entradas, despesas, saldo, posição patrimonial, desp
 - **PDF executivo:** toque em **Gerar PDF executivo** e escolha **Salvar como PDF** na janela de impressão do navegador. Inclui resumo, gráfico por pessoa e faturas fechadas/pagas encontradas no período.
 - **Exportação CSV/Excel:** baixa os dados tabulares do perfil atual para análise em planilha. Confira os valores e as datas antes de compartilhar o arquivo.
 
-## 13. Ajustes
+## 14. Ajustes
 
 ### Pessoas, clientes e categorias
 
@@ -199,24 +196,24 @@ Em **Planejamento e critérios financeiros**, configure renda líquida mensal ou
 - **Excluir mês quitado:** em Ajustes → Meses, oculta da navegação um mês que já foi totalmente quitado; os registros são preservados. A confirmação valida novamente a quitação. Use **Restaurar** na mesma seção para voltar a exibir o mês.
 - **Fechamento contábil:** o cadeado do cabeçalho fecha o mês selecionado depois de quitar e conferir. O mês fechado aparece em Ajustes e pode ser reaberto. Fechar mês é uma marca de controle, não pagamento automático.
 
-## 14. Privacidade, senha e biometria
+## 15. Privacidade, senha e biometria
 
 - **Olho/privacidade:** oculta valores monetários na tela para proteger a visualização casual. Não cifra nem substitui logout.
 - **Alterar senha:** use o botão de chave no cabeçalho, informe a senha atual e cadastre uma nova conforme as regras exibidas.
 - **Bloqueio biométrico:** em Ajustes, habilite o bloqueio do dispositivo quando o navegador e o aparelho oferecem WebAuthn/biometria. Cadastre no próprio dispositivo e confirme o desbloqueio ao voltar ao app. Se o recurso não for compatível, continue usando o login normal.
 - **Sair:** no menu do perfil, escolha Sair para encerrar a sessão. Faça isso em aparelhos compartilhados.
 
-## 15. Perfis PF e PJ
+## 16. Perfis PF e PJ
 
 O botão **PF · Pessoal / PJ · Empresa** no cabeçalho alterna ambientes independentes. No modo PJ, os termos são adaptados (clientes, fornecedores, contas a receber, cartões corporativos e despesas operacionais). Em Ajustes PJ, informe razão social, nome fantasia, CNPJ, regime tributário, chave Pix e vencimento padrão. Nas despesas PJ, classifique custos fixos, impostos/tributos, pró-labore/folha ou variáveis. Nas entradas, associe cliente e situação da nota fiscal.
 
 O acesso ao ambiente PJ é reservado ao nível 5. Usuários de outros níveis não conseguem alternar para esse perfil.
 
-## 16. Conexão bancária
+## 17. Conexão bancária
 
 A conexão automática com instituições bancárias está indisponível no momento. Cadastre ou atualize os saldos manualmente em **Patrimônio**. O sistema não solicitará autorização bancária nessa tela.
 
-## 17. Admin e níveis de acesso
+## 18. Admin e níveis de acesso
 
 A aba **Admin** só aparece para o administrador. Ela permite conceder acesso individual (nome, e-mail, senha inicial e nível), revisar a situação do usuário e administrar permissões.
 
@@ -236,7 +233,7 @@ O cartão também apresenta data de criação, último acesso, quantidade de lan
 
 ### Níveis 1 a 5
 
-Na matriz **Níveis e permissões**, escolha o nível e marque/desmarque cada recurso ou subitem; depois toque em **Salvar permissões**. O nível define o que todos os usuários atribuídos a ele recebem. A mudança pode refletir no usuário na próxima atualização de permissões/login.
+Na matriz **Níveis e permissões**, escolha o nível e marque/desmarque cada recurso ou subitem; depois toque em **Salvar permissões**. Agora a matriz tem grupos próprios para **Cobranças** e **Calculadoras**, incluindo o acesso às telas e os controles internos. O nível define o que todos os usuários atribuídos a ele recebem. A mudança pode refletir no usuário na próxima atualização de permissões/login.
 
 - **Nível 1 · Básico:** visão geral e consulta básica de entradas/despesas, além de privacidade.
 - **Nível 2 · Essencial:** cadastro e pagamento de entradas/despesas, radar de assinaturas, consulta de faturas, parcelas e linha do tempo.
@@ -248,7 +245,7 @@ O nível 5 mantém todos os recursos. Os níveis superiores preservam as permiss
 
 No cartão de cada usuário, ajuste o seletor **Nível** para alterar seu nível individual. Ao conceder novo acesso, o formulário aceita um nível inicial. O nível controla o que a interface disponibiliza; áreas sensíveis como Admin e integrações também passam por verificação no servidor. Nem toda gravação financeira antiga tem permissão por ação independente no banco: não compartilhe seu login.
 
-## 18. Problemas comuns e como resolver
+## 19. Problemas comuns e como resolver
 
 | Situação | O que conferir |
 |---|---|
@@ -262,7 +259,7 @@ No cartão de cada usuário, ajuste o seletor **Nível** para alterar seu nível
 | Open Finance não inicia | Verifique internet, credenciais do provedor no ambiente publicado e disponibilidade da instituição. Tente atualizar depois de autorizar. |
 | Alterações offline não aparecem em outro aparelho | Reconecte à internet, mantenha o app aberto até a sincronização confirmar e atualize a tela. |
 
-## 19. Boas práticas de uso
+## 20. Boas práticas de uso
 
 1. Cadastre pessoas, categorias e cartões antes de lançar muitos gastos.
 2. Ao criar uma compra, confira mês inicial, parcelas, responsável e cartão.

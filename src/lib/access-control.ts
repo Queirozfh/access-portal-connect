@@ -5,6 +5,9 @@ export const ACCESS_FEATURE_GROUPS = [
     { id: 'receivable.add', label: 'Cadastrar recebimentos e faturamento', minLevel: 2 },
     { id: 'receivable.edit', label: 'Editar recebimentos', minLevel: 2 },
     { id: 'receivable.receive', label: 'Registrar recebimento / reembolso', minLevel: 2 },
+  ] },
+  { id: 'billing', label: 'Cobranças', features: [
+    { id: 'billing.view', label: 'Abrir cobrança por pessoa e extrato acumulado', minLevel: 2 },
     { id: 'receivable.ledger', label: 'Consultar extrato por pessoa / cliente', minLevel: 2 },
     { id: 'receivable.receipt', label: 'Gerar recibo de quitação', minLevel: 3 },
     { id: 'receivable.whatsapp', label: 'Cobrar ou compartilhar pelo WhatsApp', minLevel: 3 },
@@ -40,8 +43,8 @@ export const ACCESS_FEATURE_GROUPS = [
     { id: 'assets.emergencyReserve', label: 'Consultar reserva e cobertura de caixa', minLevel: 4 },
     { id: 'assets.passiveIncome', label: 'Consultar projeção de renda passiva', minLevel: 4 },
   ] },
-  { id: 'planning', label: 'Planejamento', features: [
-    { id: 'planning.view', label: 'Abrir simuladores', minLevel: 3 },
+  { id: 'planning', label: 'Calculadoras', features: [
+    { id: 'planning.view', label: 'Abrir calculadoras', minLevel: 3 },
     { id: 'planning.analyze', label: 'Analisar compra planejada com IA', minLevel: 4 },
     { id: 'planning.compound', label: 'Simular juros compostos', minLevel: 4 },
     { id: 'planning.vehicleSimulator', label: 'Simular financiamento e troca de veículo', minLevel: 4 },
