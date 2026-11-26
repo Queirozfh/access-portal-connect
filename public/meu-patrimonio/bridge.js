@@ -9,6 +9,8 @@ let cloudSession = null,
   activeFinanceProfile = "PF",
   financeProfileStates = {};
 let pendingSyncBusy = false;
+let stateUpdatedAt = null;
+let stateConflict = false;
 const LOGIN_LIMIT_KEY = "cdm-login-limit-v1";
 function passwordMeetsPolicy(value) {
   return value.length >= 8 && value.length <= 72 && /\p{L}/u.test(value) && /\p{N}/u.test(value);
@@ -123,10 +125,12 @@ function serializeState() {
   };
 }
 async function readCloudState() {
-  let response = await cloudFetch("/rest/v1/app_state?id=eq." + encodeURIComponent(accountRow) + "&select=json");
+  let response = await fetch("/api/public/financial-state", { headers: { Authorization: "Bearer " + (await cloudToken()) } });
   if (!response.ok) throw Error("Não foi possível carregar os dados online.");
-  let rows = await response.json();
-  let source = rows.length ? JSON.parse(rows[0].json) : {};
+  let result = await response.json();
+  let source = result.state || {};
+  stateUpdatedAt = result.updated_at || null;
+  stateConflict = false;
   originalState = source;
   activeFinanceProfile = localStorage.getItem("cdm-active-finance-profile-" + authUser.id) === "PJ" ? "PJ" : "PF";
   KEY = financeProfileKey();
@@ -162,7 +166,7 @@ async function readCloudState() {
   if (queued) flushPendingState();
 }
 function flushPendingState() {
-  if (pendingSyncBusy || !navigator.onLine || !backendSyncEnabled || !authUser) return backendWrites;
+  if (stateConflict || pendingSyncBusy || !navigator.onLine || !backendSyncEnabled || !authUser) return backendWrites;
   pendingSyncBusy = true;
   backendWrites = backendWrites
     .catch(() => {})
@@ -173,24 +177,47 @@ function flushPendingState() {
         if (!queued) break;
         let marker = JSON.parse(queued),
           body = JSON.stringify({
-            id: accountRow,
             json: marker.json || JSON.stringify(serializeState()),
-            updated_at: marker.updated_at || new Date().toISOString(),
+            expected_updated_at: marker.expected_updated_at ?? stateUpdatedAt,
           }),
-          response = await cloudFetch("/rest/v1/app_state?on_conflict=id", {
+          response = await fetch("/api/public/financial-state", {
             method: "POST",
-            headers: { "Content-Type": "application/json", Prefer: "resolution=merge-duplicates" },
+            headers: { "Content-Type": "application/json", Authorization: "Bearer " + (await cloudToken()) },
             body,
           });
+        if (response.status === 409) {
+          stateConflict = true;
+          showSyncConflict();
+          break;
+        }
         if (!response.ok) throw Error("Não foi possível sincronizar as alterações pendentes.");
+        const saved = await response.json();
+        stateUpdatedAt = saved.updated_at || stateUpdatedAt;
         if (localStorage.getItem(queueKey) === queued) localStorage.removeItem(queueKey);
+        else {
+          // A newer local edit may have replaced this queue entry while the
+          // request was in flight. Rebase it only when it shares this request's
+          // original server version; unrelated edits still get a 409.
+          const latest = localStorage.getItem(queueKey);
+          if (latest) {
+            try {
+              const next = JSON.parse(latest);
+              if (next.expected_updated_at === marker.expected_updated_at) {
+                next.expected_updated_at = stateUpdatedAt;
+                localStorage.setItem(queueKey, JSON.stringify(next));
+              }
+            } catch {}
+          }
+        }
       }
+      if (stateConflict) return;
       document.querySelector("#saveStatus").textContent = navigator.onLine
         ? "Salvo online"
         : "Offline · alterações em fila";
     })
     .catch(() => {
-      document.querySelector("#saveStatus").textContent = "Offline · alterações em fila";
+      const status = document.querySelector("#saveStatus");
+      if (!stateConflict && status) status.textContent = navigator.onLine ? "Erro ao salvar · alterações preservadas" : "Offline · alterações em fila";
     })
     .finally(() => {
       pendingSyncBusy = false;
@@ -210,9 +237,37 @@ function save() {
     updatedAt = new Date().toISOString();
   localStorage.setItem(KEY, JSON.stringify(db));
   localStorage.setItem(financeProfileMapKey(), JSON.stringify(financeProfileStates));
-  localStorage.setItem(queueKey, JSON.stringify({ id: row, updated_at: updatedAt, json: JSON.stringify(payload) }));
+  localStorage.setItem(queueKey, JSON.stringify({ id: row, updated_at: updatedAt, expected_updated_at: stateUpdatedAt, json: JSON.stringify(payload) }));
+  if (stateConflict) {
+    showSyncConflict();
+    return;
+  }
   document.querySelector("#saveStatus").textContent = navigator.onLine ? "Salvando…" : "Offline · alterações em fila";
   if (navigator.onLine) flushPendingState();
+}
+function showSyncConflict() {
+  const status = document.querySelector("#saveStatus");
+  if (!status) return;
+  status.innerHTML = 'Conflito de sincronização · suas alterações estão preservadas neste aparelho. <button type="button" class="mini-btn" id="export-local-state">Baixar cópia local</button> <button type="button" class="mini-btn" id="discard-local-state">Descartar cópia e recarregar</button>';
+  status.setAttribute("role", "alert");
+  status.querySelector("#export-local-state")?.addEventListener("click", () => {
+    const queued = localStorage.getItem("cdm-pending-state-" + accountRow);
+    if (!queued) return;
+    const marker = JSON.parse(queued);
+    const localState = marker.json ? JSON.parse(marker.json) : serializeState();
+    const blob = new Blob([JSON.stringify(localState, null, 2)], { type: "application/json" });
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.download = `meu-patrimonio-conflito-${new Date().toISOString().slice(0, 10)}.json`;
+    link.click();
+    URL.revokeObjectURL(link.href);
+  });
+  status.querySelector("#discard-local-state")?.addEventListener("click", () => {
+    if (!confirm("Descartar a cópia local preservada e recarregar a versão salva online?")) return;
+    localStorage.removeItem("cdm-pending-state-" + accountRow);
+    stateConflict = false;
+    location.reload();
+  });
 }
 async function switchFinanceProfile(profile) {
   if (!["PF", "PJ"].includes(profile) || profile === activeFinanceProfile) return;
@@ -1196,7 +1251,9 @@ function deleteCard(id) {
   render();
 }
 function safetyPage() {
-  return `<div class="spacer"></div><section><div class="section-head"><div><h2>Histórico de segurança</h2><p>Últimas 7 versões anteriores · apenas deste perfil</p></div><button class="btn secondary" data-action="history-refresh">↻ Atualizar</button></div><div id="historyRows" class="table-wrap"><p>Carregando versões…</p></div></section>`;
+  if (typeof hasFeature === "function" && !hasFeature("account.export"))
+    return `<div class="spacer"></div><section class="card"><div class="section-head"><div><h2>Histórico e cópias de segurança</h2><p>Acesso restrito ao nível autorizado.</p></div></div></section>`;
+  return `<div class="spacer"></div><section class="card"><div class="section-head"><div><h2>Histórico de segurança</h2><p>Últimas 7 versões anteriores · apenas desta conta</p></div><button class="btn secondary" data-action="history-refresh">↻ Atualizar</button></div><div id="historyRows" class="table-wrap"><p>Carregando versões…</p></div></section><div class="spacer"></div><section class="card"><div class="section-head"><div><h2>Cópias diárias</h2><p>Até 30 dias · a última cópia disponível pode ser restaurada.</p></div><button class="btn secondary" data-action="backup-refresh">↻ Atualizar</button></div><div id="dailyBackupRows" class="table-wrap"><p>Carregando cópias…</p></div></section>`;
 }
 async function loadHistory() {
   let target = document.querySelector("#historyRows");
@@ -1210,6 +1267,28 @@ async function loadHistory() {
       ? `<table><thead><tr><th>Estado salvo em (Fortaleza)</th><th>Ação</th></tr></thead><tbody>${rows.map((row) => `<tr><td>${esc(new Date(row.saved_at).toLocaleString("pt-BR", { timeZone: "America/Fortaleza" }))}</td><td><button class="btn secondary" data-action="history-restore" data-id="${row.id}">↶ Restaurar</button></td></tr>`).join("")}</tbody></table>`
       : '<div class="empty">O histórico começa na próxima alteração salva online.</div>';
     target.querySelectorAll("[data-action]").forEach((b) => (b.onclick = () => restoreHistory(b.dataset.id)));
+  } catch (error) {
+    target.textContent = error.message;
+  }
+}
+async function loadDailyBackups() {
+  const target = document.querySelector("#dailyBackupRows");
+  if (!target) return;
+  try {
+    const response = await cloudFetch("/rest/v1/rpc/list_daily_financial_backups", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: "{}",
+    });
+    if (!response.ok) throw Error("Não foi possível carregar as cópias diárias.");
+    const rows = await response.json();
+    target.innerHTML = rows.length
+      ? `<table><thead><tr><th>Data da cópia</th><th>Última atualização</th><th>Ação</th></tr></thead><tbody>${rows.map(row => {
+          const date = new Date(`${row.backup_date}T12:00:00-03:00`);
+          const created = new Date(row.created_at).toLocaleString("pt-BR", { timeZone: "America/Fortaleza" });
+          return `<tr><td>${esc(date.toLocaleDateString("pt-BR", { timeZone: "America/Fortaleza" }))}</td><td>${esc(created)}</td><td><button class="btn secondary" data-action="backup-restore" data-id="${esc(row.backup_date)}">↶ Restaurar</button></td></tr>`;
+        }).join("")}</tbody></table>`
+      : '<div class="empty">A primeira cópia diária será criada no próximo ciclo de backup.</div>';
   } catch (error) {
     target.textContent = error.message;
   }
@@ -1237,6 +1316,27 @@ async function restoreHistory(id) {
     toast(error.message);
   }
 }
+async function restoreDailyBackup(date) {
+  const label = new Date(`${date}T12:00:00-03:00`).toLocaleDateString("pt-BR", { timeZone: "America/Fortaleza" });
+  if (!confirm(`Restaurar a cópia de ${label}? Os dados atuais serão preservados no histórico antes da restauração.`)) return;
+  try {
+    await backendWrites;
+    const response = await cloudFetch("/rest/v1/rpc/restore_daily_financial_backup", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ p_backup_date: date }),
+    });
+    if (!response.ok || (await response.json()) !== true) throw Error("Cópia indisponível ou acesso expirado.");
+    await readCloudState();
+    applyTheme();
+    render();
+    loadHistory();
+    loadDailyBackups();
+    toast("Cópia diária restaurada");
+  } catch (error) {
+    toast(error.message);
+  }
+}
 async function loadAiUsage() {
   let target = document.querySelector("#aiUsage");
   if (!target) return;
@@ -1250,7 +1350,7 @@ async function loadAiUsage() {
       ? "IA desativada pelo administrador"
       : data.limit === null
         ? "Administrador · sem limite mensal de IA"
-        : `${data.used} de 4 análises utilizadas em ${monthLabel(data.month.slice(0, 7))} · renova dia 1º (Fortaleza)`;
+        : `${data.used} de ${data.limit} análises utilizadas em ${monthLabel(data.month.slice(0, 7))} · renova dia 1º (Fortaleza)`;
     let button = document.querySelector("#planForm button");
     if (button) button.disabled = !data.allowed || aiBusy;
   } catch (error) {
