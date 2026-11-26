@@ -68,7 +68,6 @@ export const ACCESS_FEATURE_GROUPS = [
     { id: 'profile.pj', label: 'Acessar perfil financeiro PJ (exclusivo nível 5)', minLevel: 5 },
     { id: 'privacy.toggle', label: 'Ocultar ou exibir valores', minLevel: 1 },
   ] },
-  { id: 'integrations', label: 'Integrações', features: [
     { id: 'integrations.openFinance', label: 'Conectar e sincronizar instituição bancária', minLevel: 5 },
   ] },
 ] as const;
