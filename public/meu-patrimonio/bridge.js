@@ -483,48 +483,11 @@ async function startAuthenticatedApp() {
     showAuthScreen();
   };
 }
-async function refreshAccess() {
-  if (!authUser || accessBusy) return;
-  accessBusy = true;
-  try {
-    await verifyAccount();
-    await loadFeatureAccess();
-    let target = document.querySelector("#accessNotice");
-    if (authUser.role === "admin") {
-      let result = await adminCall({ action: "list" }),
-        warnings = result.users.filter(
-          (u) =>
-            !u.admin &&
-            !u.suspended &&
-            u.expires_at &&
-            new Date(u.expires_at) - Date.now() > 0 &&
-            new Date(u.expires_at) - Date.now() <= 604800000,
-        );
-      target.innerHTML = warnings.length
-        ? `<div class="access-warning">Acessos próximos do vencimento: ${warnings.map((u) => esc(u.name || u.email) + " — " + esc(new Date(u.expires_at).toLocaleString("pt-BR"))).join("; ")}</div>`
-        : "";
-    } else {
-      let remaining = authUser.expiresAt ? Math.max(0, new Date(authUser.expiresAt) - Date.now()) : null;
-      target.innerHTML =
-        remaining === null
-          ? "Acesso liberado pelo administrador: sem prazo"
-          : `<div class="access-warning">Tempo restante: ${Math.ceil(remaining / 3600000)} hora(s) · até ${esc(new Date(authUser.expiresAt).toLocaleString("pt-BR"))}${remaining <= 604800000 ? "<br>Regularize o pagamento e solicite a renovação antes do vencimento." : ""}</div>`;
-    }
-  } catch (error) {
-    if (error.message === "suspenso") showAuthScreen("suspended", error.message);
-    else if (error.message === "Sua sessão expirou.") showAuthScreen("login", error.message);
-    else {
-      let target = document.querySelector("#accessNotice");
-      if (target)
-        target.innerHTML =
-          '<div class="access-warning">Não foi possível atualizar os avisos de acesso. Sua sessão continua ativa.</div>';
-      console.warn("Falha ao atualizar informações administrativas:", error);
-    }
-  } finally {
-    accessBusy = false;
-  }
-}
-window.addEventListener("focus", () => refreshAccess());
+function closeAccessNotifications(){const button=document.querySelector('#accessNotificationsButton'),panel=document.querySelector('#accessNotificationsPanel');if(!button||!panel)return;panel.hidden=true;button.setAttribute('aria-expanded','false')}
+function renderAccessNotifications(users){const wrap=document.querySelector('#accessNotifications'),button=document.querySelector('#accessNotificationsButton'),panel=document.querySelector('#accessNotificationsPanel'),count=document.querySelector('#accessNotificationCount');if(!wrap||!button||!panel||!count)return;wrap.hidden=authUser?.role!=='admin';if(wrap.hidden)return;const now=Date.now(),warnings=users.filter(u=>!u.admin&&!u.suspended&&u.expires_at&&new Date(u.expires_at).getTime()>now&&new Date(u.expires_at).getTime()-now<=604800000).sort((a,b)=>new Date(a.expires_at)-new Date(b.expires_at));count.hidden=!warnings.length;count.textContent=warnings.length>99?'99+':String(warnings.length);button.setAttribute('aria-label',warnings.length?`${warnings.length} acesso(s) próximo(s) do vencimento`:'Notificações de acesso; nenhum vencimento próximo');const rows=warnings.map(user=>{const remaining=new Date(user.expires_at).getTime()-now,days=Math.floor(remaining/86400000),hours=Math.floor((remaining%86400000)/3600000),until=days>0?`vence em ${days} dia(s) e ${hours} h`:remaining<3600000?'vence em menos de 1 hora':`vence em ${hours} hora(s)`;return `<article class="access-notification-item"><strong>${esc(user.name||user.email||'Usuário')}</strong><span>${esc(until)}</span><small>Data limite: ${esc(new Date(user.expires_at).toLocaleString('pt-BR'))}</small></article>`}).join('');panel.innerHTML=`<h2>Acessos próximos do vencimento</h2><p>Contas ativas com prazo nos próximos 7 dias.</p>${warnings.length?`<div class="access-notification-list">${rows}</div>`:'<div class="access-notification-empty">Nenhum acesso próximo do vencimento.</div>'}<button type="button" class="access-notification-footer" data-open-admin-users>Gerenciar acessos</button>`;panel.querySelector('[data-open-admin-users]').onclick=()=>{closeAccessNotifications();setPage('admin')};button.onclick=()=>{panel.hidden=!panel.hidden;button.setAttribute('aria-expanded',String(!panel.hidden))}}
+function setAccessNotificationError(){const wrap=document.querySelector('#accessNotifications'),button=document.querySelector('#accessNotificationsButton'),panel=document.querySelector('#accessNotificationsPanel');if(authUser?.role!=='admin'||!wrap||!button||!panel)return;wrap.hidden=false;panel.innerHTML='<h2>Acessos próximos do vencimento</h2><div class="access-notification-empty">Não foi possível carregar as notificações agora.</div><button type="button" class="access-notification-footer" data-open-admin-users>Gerenciar acessos</button>';panel.querySelector('[data-open-admin-users]').onclick=()=>{closeAccessNotifications();setPage('admin')};button.onclick=()=>{panel.hidden=!panel.hidden;button.setAttribute('aria-expanded',String(!panel.hidden))}}
+document.addEventListener('click',event=>{const wrap=document.querySelector('#accessNotifications');if(wrap&&!wrap.contains(event.target))closeAccessNotifications()});async function refreshAccess(){if(!authUser||accessBusy)return;accessBusy=true;try{await verifyAccount();await loadFeatureAccess();let target=document.querySelector('#accessNotice');if(authUser.role==='admin'){let result=await adminCall({action:'list'});renderAccessNotifications(result.users);target.innerHTML=''}else{let wrap=document.querySelector('#accessNotifications');if(wrap)wrap.hidden=true;let remaining=authUser.expiresAt?Math.max(0,new Date(authUser.expiresAt)-Date.now()):null;target.innerHTML=remaining===null?'Acesso liberado pelo administrador: sem prazo':`<div class="access-warning">Tempo restante: ${Math.ceil(remaining/3600000)} hora(s) · até ${esc(new Date(authUser.expiresAt).toLocaleString('pt-BR'))}${remaining<=604800000?'<br>Regularize o pagamento e solicite a renovação antes do vencimento.':''}</div>`}}catch(error){if(error.message==='suspenso')showAuthScreen('suspended',error.message);else if(error.message==='Sua sessão expirou.')showAuthScreen('login',error.message);else{let target=document.querySelector('#accessNotice');if(target)target.innerHTML=authUser?.role==='admin'?'':'<div class="access-warning">Não foi possível atualizar os avisos de acesso. Sua sessão continua ativa.</div>';if(authUser?.role==='admin')setAccessNotificationError();console.warn('Falha ao atualizar informações administrativas:',error)}}finally{accessBusy=false}}
+  window.addEventListener("focus", () => refreshAccess());
 document.addEventListener("visibilitychange", () => {
   if (!document.hidden) refreshAccess();
 });
