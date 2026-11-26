@@ -139,22 +139,20 @@ export const Route = createFileRoute("/api/public/register")({
             supabaseAdmin.auth.admin.updateUserById(user.id, {
               app_metadata: { ...metadata, access_level: 1, expires_at: expiresAt },
             }),
-            supabaseAdmin
-              .from("app_state")
-              .upsert({
-                id: user.id,
-                json: JSON.stringify({
-                  v: 1,
-                  titular: "Eu",
-                  people: [],
-                  incomes: [],
-                  bills: [],
-                  purchases: [],
-                  received: [],
-                  hidden: [],
-                }),
-                updated_at: new Date().toISOString(),
+            supabaseAdmin.from("app_state").upsert({
+              id: user.id,
+              json: JSON.stringify({
+                v: 1,
+                titular: "Eu",
+                people: [],
+                incomes: [],
+                bills: [],
+                purchases: [],
+                received: [],
+                hidden: [],
               }),
+              updated_at: new Date().toISOString(),
+            }),
           ]);
           if (levelError || stateError) throw new Error("Cadastro indisponível.");
         } catch {
