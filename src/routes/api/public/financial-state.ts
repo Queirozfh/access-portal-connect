@@ -6,6 +6,65 @@ import { rejectCrossSiteRequest } from '@/lib/session-cookie.server';
 const json = (body: unknown, status = 200) => Response.json(body, { status, headers: { 'Cache-Control': 'no-store' } });
 const profileNames = new Set(['PF', 'PJ']);
 const readFeatures = ['home.view','expenses.view','receivable.view','budgets.view','invoices.view','installments.view','timeline.view','assets.view','planning.view','reports.view','subscriptions.view','billing.view'];
+function emptyFinancialState(name = 'Eu'): Record<string, unknown> {
+  return { items: [], assets: [], bills: [], reimbursements: [], people: [name], peopleInBill: [name], categories: ['Alimentação','Mercado','Assinaturas','Saúde','Lazer','Transporte','Casa','Outros'], settings: { ownerName: name, usd: 0, theme: 'dark', yellowAlert: 70, redAlert: 90, hiddenMonths: [] } };
+}
+function monthOffset(value: string, offset: number): string {
+  const match = /^(\d{4})-(\d{2})$/.exec(value);
+  if (!match) return value;
+  const date = new Date(Number(match[1]), Number(match[2]) - 1 + offset, 1);
+  return date.getFullYear() + '-' + String(date.getMonth() + 1).padStart(2, '0');
+}
+function normalizeProfileState(source: unknown): Record<string, unknown> {
+  if (!source || typeof source !== 'object' || Array.isArray(source)) return emptyFinancialState();
+  const value = source as Record<string, any>;
+  const modern = Array.isArray(value.items) && Array.isArray(value.assets);
+  if (modern) {
+    const base = emptyFinancialState(value.settings?.ownerName || value.titular || 'Eu');
+    return { ...base, ...value, settings: { ...(base.settings as Record<string, unknown>), ...(value.settings || {}) } };
+  }
+  const titular = value.titular || 'Eu';
+  const base = emptyFinancialState(titular);
+  base.legacyOriginal = value;
+  const people = Array.isArray(value.people) ? value.people.map((person: any) => typeof person === 'string' ? person : person?.name).filter(Boolean) : [];
+  base.people = [...new Set([titular, ...people])];
+  base.peopleInBill = [titular, ...(Array.isArray(value.people) ? value.people.filter((person: any) => person && typeof person === 'object' && person.inBill).map((person: any) => person.name) : [])].filter(Boolean);
+  base.categories = Array.isArray(value.cats) ? value.cats : base.categories;
+  base.settings = { ...(base.settings as Record<string, unknown>), ownerName: titular, usd: value.fx?.rate || 0, usdDate: value.fx?.date, hiddenMonths: value.hidden || [], yellowAlert: (value.yellow || 0.7) * 100, redAlert: (value.red || 0.9) * 100 };
+  const items: Record<string, unknown>[] = [];
+  for (const [entries, kind] of [[value.incomes || [], 'income'], [value.purchases || [], 'expense']] as [any[], string][]) {
+    for (const entry of entries) {
+      const recurring = entry.n == null, count = recurring ? 1 : Math.max(1, Number(entry.n) || 1);
+      for (let i = 0; i < count; i++) {
+        const start = entry.start || value.start || new Date().toISOString().slice(0, 7), month = monthOffset(start, i);
+        items.push({ id: String(entry.id) + '-' + i, sourceId: String(entry.id), kind, name: entry.desc, amount: Number(entry.valor) || 0, month, due: month, person: entry.who || titular, category: entry.cat || 'Outros', installments: recurring ? 0 : count, part: i + 1, recurring, paid: 0, notes: entry.obs || '', order: entry.ord ?? items.length, endMonth: entry.end });
+      }
+    }
+  }
+  base.items = items;
+  base.bills = (value.bills || []).map((bill: any) => ({ ...bill, name: bill.desc, amount: bill.valor }));
+  base.reimbursements = (value.received || []).map((row: any) => ({ ...row, person: row.who, amount: row.valor, unallocated: row.valor }));
+  base.assets = (value.assets || []).map((asset: any) => ({ ...asset, bank: asset.bank || asset.name, month: asset.month || value.start, delta: asset.currency === 'USD' ? asset.balance * (value.fx?.rate || 0) : asset.balance, originalAmount: asset.balance, usdRate: asset.currency === 'USD' ? value.fx?.rate : null }));
+  return base;
+}
+async function readLimitedBody(request: Request, maxBytes: number): Promise<string | null> {
+  const declaredLength = Number(request.headers.get('content-length') || 0);
+  if (declaredLength > maxBytes || !request.body) return null;
+  const reader = request.body.getReader(), chunks: Uint8Array[] = [];
+  let size = 0;
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      size += value.byteLength;
+      if (size > maxBytes) { await reader.cancel(); return null; }
+      chunks.push(value);
+    }
+    const bytes = new Uint8Array(size); let offset = 0;
+    for (const chunk of chunks) { bytes.set(chunk, offset); offset += chunk.byteLength; }
+    return new TextDecoder().decode(bytes);
+  } catch { return null; }
+}
 
 function stable(value: unknown): string {
   if (Array.isArray(value)) return '[' + value.map(stable).join(',') + ']';
@@ -18,6 +77,7 @@ function itemMap(value: unknown): Map<string, Record<string, unknown>> {
 function requiredFeatures(previous: Record<string, unknown>, next: Record<string, unknown>): string[] {
   const required = new Set<string>();
   const beforeItems = itemMap(previous.items), afterItems = itemMap(next.items);
+  const includesNewItem = [...afterItems.keys()].some(id => !beforeItems.has(id));
   for (const [id,item] of afterItems) {
     const old = beforeItems.get(id), kind = item.kind === 'income' ? 'income' : 'expense';
     if (!old) {
@@ -27,7 +87,7 @@ function requiredFeatures(previous: Record<string, unknown>, next: Record<string
     }
     const changed = [...new Set([...Object.keys(old), ...Object.keys(item)])].filter(key => stable(old[key]) !== stable(item[key]));
     if (!changed.length) continue;
-    if (changed.every(key => key === 'ord')) required.add(kind === 'income' ? 'receivable.edit' : 'expenses.reorder');
+    if (changed.every(key => key === 'ord')) { if (!includesNewItem) required.add(kind === 'income' ? 'receivable.edit' : 'expenses.reorder'); }
     else if (changed.every(key => ['payments','paid','received'].includes(key))) required.add(kind === 'income' ? 'receivable.receive' : 'expenses.pay');
     else if (changed.length === 1 && changed[0] === 'cardId' && kind === 'expense') required.add('expenses.assignCard');
     else required.add(kind === 'income' ? 'receivable.edit' : 'expenses.edit');
@@ -100,8 +160,8 @@ export const Route = createFileRoute('/api/public/financial-state')({
       if (rejectCrossSiteRequest(request)) return json({ error: 'Origem inválida.' }, 403);
       const auth = await portalAuth(request);
       if (!auth) return json({ error: 'Entre novamente para alterar os dados.' }, 401);
-      const text = await request.text();
-      if (new TextEncoder().encode(text).byteLength > 5_000_000) return json({ error: 'O estado financeiro excede o limite permitido.' }, 413);
+      const text = await readLimitedBody(request, 5_000_000);
+      if (text === null) return json({ error: 'O estado financeiro excede o limite permitido ou a solicitação está inválida.' }, 413);
       let body: { action?: string; profile?: string; state?: unknown; expectedUpdatedAt?: unknown; historyId?: unknown };
       try { body = JSON.parse(text); } catch { return json({ error: 'Solicitação inválida.' }, 400); }
       const { data: isAdmin, error: roleError } = await auth.client.rpc('has_role', { _user_id: auth.userId, _role: 'admin' });
@@ -145,8 +205,9 @@ export const Route = createFileRoute('/api/public/financial-state')({
       let current: Record<string, unknown> = {};
       try { current = row?.json ? JSON.parse(row.json) : {}; } catch { return json({ error: 'Os dados financeiros atuais estão inválidos.' }, 500); }
       const currentProfiles = current.financeProfiles && typeof current.financeProfiles === 'object' ? current.financeProfiles as Record<string, unknown> : {};
-      const previousState = currentProfiles[profile] || (profile === 'PF' ? current.patrimonioApp || current : {}) as Record<string, unknown>;
-      const nextState = body.state as Record<string, unknown>;
+      const storedProfile = currentProfiles[profile] || (profile === 'PF' ? current.patrimonioApp || current : null);
+      const previousState = normalizeProfileState(storedProfile);
+      const nextState = normalizeProfileState(body.state);
       const needed = requiredFeatures(previousState, nextState);
       if (!isAdmin && needed.some(feature => !features.includes(feature))) return json({ error: 'Uma ou mais alterações não estão autorizadas para seu nível.' }, 403);
       current.financeProfiles = { ...currentProfiles, [profile]: nextState };
