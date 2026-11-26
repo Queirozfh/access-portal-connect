@@ -64,6 +64,13 @@
       "when": 1795710000001,
       "tag": "0008_persistent_auth_throttling",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1795710000002,
+      "tag": "0009_server_owned_financial_state",
+      "breakpoints": true
     }
   ]
 }
