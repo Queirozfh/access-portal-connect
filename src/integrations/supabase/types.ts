@@ -119,7 +119,14 @@ export type Database = {
         }
         Returns: boolean
       }
+      consume_auth_attempt: { Args: { p_ip_hash: string; p_kind: string }; Returns: boolean }
+      list_daily_financial_backups: {
+        Args: Record<PropertyKey, never>
+        Returns: { backup_date: string; created_at: string }[]
+      }
+      reset_auth_attempt: { Args: { p_ip_hash: string; p_kind: string }; Returns: undefined }
       reserve_ai_use: { Args: { p_user_id: string }; Returns: Json }
+      restore_daily_financial_backup: { Args: { p_backup_date: string }; Returns: boolean }
       restore_financial_state: {
         Args: { p_history_id: number }
         Returns: boolean

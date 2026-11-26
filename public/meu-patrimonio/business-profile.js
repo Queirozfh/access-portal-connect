@@ -14,10 +14,18 @@ function formatCnpj(value) {
   const digits=String(value||'').replace(/\D/g,'').slice(0,14);
   return digits.replace(/^(\d{2})(\d)/,'$1.$2').replace(/^(\d{2})\.(\d{3})(\d)/,'$1.$2.$3').replace(/\.(\d{3})(\d)/,'.$1/$2').replace(/(\d{4})(\d)/,'$1-$2');
 }
+function isValidCnpj(value) {
+  const digits=String(value||'').replace(/\D/g,'');
+  if(!/^\d{14}$/.test(digits)||/^([0-9])\1{13}$/.test(digits))return false;
+  const digit=(base,weights)=>{const sum=[...base].reduce((total,n,index)=>total+Number(n)*weights[index],0),remainder=sum%11;return remainder<2?0:11-remainder};
+  const first=digit(digits.slice(0,12),[5,4,3,2,9,8,7,6,5,4,3,2]);
+  const second=digit(digits.slice(0,12)+first,[6,5,4,3,2,9,8,7,6,5,4,3,2]);
+  return digits.endsWith(`${first}${second}`);
+}
 document.addEventListener('input',event=>{if(event.target?.id==='companyCnpj')event.target.value=formatCnpj(event.target.value)});
 function saveCompanyFiscalSettings() {
   const cnpjInput=document.querySelector('#companyCnpj'), digits=(cnpjInput?.value||'').replace(/\D/g,'');
-  if(digits&&digits.length!==14){toast('Informe um CNPJ com 14 dígitos.');cnpjInput?.focus();return;}
+  if(digits&&!isValidCnpj(digits)){toast('Informe um CNPJ válido, incluindo os dígitos verificadores.');cnpjInput?.focus();return;}
   const dueDay=Number(document.querySelector('#companyDueDay')?.value)||10;
   if(dueDay<1||dueDay>31){toast('O dia de vencimento deve ficar entre 1 e 31.');return;}
   db.settings.companyProfile={legalName:document.querySelector('#companyLegalName')?.value.trim()||'',tradeName:document.querySelector('#companyTradeName')?.value.trim()||'',cnpj:digits?formatCnpj(digits):'',taxRegime:document.querySelector('#companyTaxRegime')?.value||'',pixKey:document.querySelector('#companyPixKey')?.value.trim()||'',dueDay};
@@ -35,6 +43,7 @@ function addBusinessEntryFields(kind,item,form) {
     const clientField=document.createElement('div');clientField.className='field';clientField.innerHTML=`<label for="businessCounterparty">Cliente / pagador</label><select id="businessCounterparty" name="counterparty" required><option value="">Selecione um cliente</option>${(db.people||[]).filter(person=>person!==ownerName()).map(person=>`<option value="${esc(person)}" ${item?.counterparty===person?'selected':''}>${esc(person)}</option>`).join('')}</select><small>Cadastre clientes em Ajustes → Clientes, fornecedores e parceiros.</small>`;grid.append(clientField);
     const field=document.createElement('div');field.className='field';const value=item?.invoiceStatus||'not_applicable';field.innerHTML=`<label for="invoiceStatus">Nota fiscal</label><select id="invoiceStatus" name="invoiceStatus"><option value="not_applicable" ${value==='not_applicable'?'selected':''}>Não aplicável</option><option value="no" ${value==='no'?'selected':''}>Não emitida</option><option value="yes" ${value==='yes'?'selected':''}>Emitida</option></select>`;grid.append(field);
   }
+  const details=document.createElement('details');details.className='business-entry-details';details.style.gridColumn='1 / -1';details.innerHTML=`<summary>Mais detalhes empresariais (opcional)</summary><div class="form-grid"><div class="field"><label for="businessCostCenter">Centro de custo</label><input id="businessCostCenter" name="costCenter" maxlength="80" value="${esc(item?.costCenter||'')}" placeholder="Ex.: Operações"></div><div class="field"><label for="businessDocumentReference">Documento de referência</label><input id="businessDocumentReference" name="documentReference" maxlength="120" value="${esc(item?.documentReference||'')}" placeholder="Ex.: contrato, pedido ou NF"></div></div>`;grid.append(details);
 }
 const baseBusinessOpenItem=openItem;
 openItem=function(kind,id){baseBusinessOpenItem(kind,id);if(!isBusinessProfile())return;const form=document.querySelector('#modalForm');addBusinessEntryFields(kind,id?db.items.find(item=>item.id===id):null,form)};
@@ -45,7 +54,7 @@ quickExpense=function(){baseBusinessQuickExpense();if(!isBusinessProfile())retur
 
 const businessExpenseTypes={fixed:'Custo fixo',tax:'Imposto / tributo',payroll:'Pró-labore / folha',variable:'Custo variável'};
 const baseBusinessItemsTable=itemsTable;
-itemsTable=function(items,...args){if(!isBusinessProfile())return baseBusinessItemsTable(items,...args);const decorated=items.map(item=>{const labels=[];if(item.kind==='income'){const status={yes:'NF emitida',no:'NF não emitida',not_applicable:'NF não aplicável'}[item.invoiceStatus]||'NF não informada';labels.push(status);if(item.counterparty)labels.push('Cliente: '+item.counterparty)}if(item.kind==='expense'&&item.businessExpenseType)labels.push(businessExpenseTypes[item.businessExpenseType]||'Despesa operacional');return labels.length?{...item,notes:[item.notes,...labels].filter(Boolean).join(' · ')}:item});return baseBusinessItemsTable(decorated,...args)};
+itemsTable=function(items,...args){if(!isBusinessProfile())return baseBusinessItemsTable(items,...args);const decorated=items.map(item=>{const labels=[];if(item.kind==='income'){const status={yes:'NF emitida',no:'NF não emitida',not_applicable:'NF não aplicável'}[item.invoiceStatus]||'NF não informada';labels.push(status);if(item.counterparty)labels.push('Cliente: '+item.counterparty)}if(item.kind==='expense'&&item.businessExpenseType)labels.push(businessExpenseTypes[item.businessExpenseType]||'Despesa operacional');if(item.costCenter)labels.push('Centro de custo: '+item.costCenter);if(item.documentReference)labels.push('Documento: '+item.documentReference);return labels.length?{...item,notes:[item.notes,...labels].filter(Boolean).join(' · ')}:item});return baseBusinessItemsTable(decorated,...args)};
 function businessReceivablesPanel(){const groups=new Map();for(const item of typeItems('income',selected())){const client=item.counterparty||'Cliente não informado',row=groups.get(client)||{items:[],total:0,received:0,open:0,withoutInvoice:0};row.items.push(item);row.total+=Number(item.amount||0);row.received+=Math.min(Number(item.amount||0),Math.max(0,paid(item,selected())));row.open+=remaining(item,selected());if(item.invoiceStatus==='no')row.withoutInvoice++;groups.set(client,row)}return `<div class="spacer"></div><section class="card"><div class="section-head"><div><h2>Contas a receber por cliente</h2><p>${monthLabel(selected())} · faturamento, recebimentos e notas fiscais</p></div></div><div class="table-wrap"><table><thead><tr><th>Cliente</th><th>Faturado</th><th>Recebido</th><th>Em aberto</th><th>Notas fiscais</th></tr></thead><tbody>${[...groups].map(([client,row])=>`<tr><td>${esc(client)}${row.open>0?`<button class="mini-btn" data-action="business-whatsapp" data-id="${esc(client)}">Cobrar no WhatsApp</button>`:''}</td><td>${money(row.total)}</td><td>${money(row.received)}</td><td>${money(row.open)}</td><td>${row.withoutInvoice?`<span class="badge pending">${row.withoutInvoice} pendente(s)</span>`:'Em dia'}</td></tr>`).join('')||'<tr><td colspan="5">Nenhum faturamento registrado neste mês.</td></tr>'}</tbody></table></div></section>`}
 const baseBusinessCollectionPage=collectionPage;
 collectionPage=function(){return isBusinessProfile()?businessReceivablesPanel():baseBusinessCollectionPage()};

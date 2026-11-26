@@ -352,7 +352,10 @@ function render() {
   if (page === "admin") c.innerHTML = adminPage();
   bindPage();
   updateBulkSelectionUi();
-  if (page === "ajustes") loadHistory();
+  if (page === "ajustes" && hasFeature("account.export")) {
+    loadHistory();
+    loadDailyBackups();
+  }
   if (page === "planejar" || page === "calculadoras") loadAiUsage();
   if (page === "admin" && authUser?.role === "admin") loadAccesses();
   if (page === "tutorial") loadTutorialContent();
@@ -472,10 +475,15 @@ function expensesPage() {
 function budgetPage() {
   const month = selected();
   const items = typeItems("expense", month);
+  const preferenceKey = `cdm-budget-view-${authUser?.id || "guest"}-${activeFinanceProfile || "PF"}`;
+  const budgetView = JSON.parse(localStorage.getItem(preferenceKey) || "{}");
+  const scope = budgetView.scope === "mine" ? "mine" : "total";
+  const basis = budgetView.basis === "paid" ? "paid" : "committed";
+  const scopedItems = items.filter(item => scope !== "mine" || (item.person || ownerName()) === ownerName());
   const monthBudgets = db.settings.monthlyBudgets?.[month] || {};
   const categories = [...new Set([
     ...db.categories,
-    ...items.map((item) => item.category || "Sem categoria"),
+    ...scopedItems.map((item) => item.category || "Sem categoria"),
     ...Object.keys(monthBudgets),
   ])].sort((a, b) => a.localeCompare(b, "pt-BR"));
   const today = new Date();
@@ -484,12 +492,12 @@ function budgetPage() {
   const elapsedDays = isCurrentMonth ? Math.max(1, today.getDate()) : daysInMonth;
   const localToday = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,"0")}-${String(today.getDate()).padStart(2,"0")}`;
   const rows = categories.map((category) => {
-    const categoryItems = items.filter((item) => (item.category || "Sem categoria") === category);
-    const spent = categoryItems.reduce((sum, item) => sum + Number(item.amount || 0), 0);
+    const categoryItems = scopedItems.filter((item) => (item.category || "Sem categoria") === category);
+    const spent = categoryItems.reduce((sum, item) => sum + (basis === "paid" ? paid(item, month) : Number(item.amount || 0)), 0);
     const paidToDate = isCurrentMonth ? categoryItems.reduce((sum, item) => sum + (item.payments || [])
       .filter((payment) => payment.date?.slice(0, 7) === month && payment.date <= localToday)
       .reduce((paid, payment) => paid + Number(payment.amount || 0), 0), 0) : spent;
-    const projection = isCurrentMonth ? Math.max(spent, paidToDate / elapsedDays * daysInMonth) : spent;
+    const projection = isCurrentMonth ? basis === "paid" ? spent / elapsedDays * daysInMonth : Math.max(spent, paidToDate / elapsedDays * daysInMonth) : spent;
     const limit = Math.max(0, Number(monthBudgets[category]) || 0);
     return { category, spent, projection, limit, count: categoryItems.length };
   });
@@ -505,7 +513,8 @@ function budgetPage() {
     const status = percent >= 100 ? "over" : percent >= 80 ? "near" : "";
     return `<article class="budget-category-card ${status}"><div class="budget-category-head"><div><h3>${esc(row.category)}</h3><small>${row.count} lançamento(s)</small></div><span class="budget-percent ${status}">${percent.toLocaleString("pt-BR", { maximumFractionDigits: 0 })}%</span></div><div class="budget-progress" role="img" aria-label="${esc(row.category)}: ${money(row.spent)} de ${money(row.limit)}"><i class="${status}" style="width:${Math.min(percent, 100)}%"></i></div><div class="budget-values"><span>Usado<strong>${money(row.spent)}</strong></span><span>Limite<strong>${money(row.limit)}</strong></span><span>Projeção<strong class="${projectedPercent >= 100 ? "negative" : ""}">${money(row.projection)}</strong></span></div><div class="budget-remaining ${row.spent > row.limit ? "negative" : ""}">${row.spent > row.limit ? `Acima do limite em ${money(row.spent - row.limit)}` : `Restam ${money(row.limit - row.spent)}`}${projectedPercent > 100 ? ` · projeção excede em ${money(row.projection - row.limit)}` : ""}</div></article>`;
   }).join("") : '<div class="empty">Defina limites para acompanhar seus gastos por categoria.</div>';
-  return `${welcome("Orçamento mensal por categoria", null, "")}<div class="grid stats budget-summary">${statsCard("Limites definidos", money(totalBudget), `${categoriesWithLimit.length} categoria(s) com orçamento`, "◈")}${statsCard("Lançado no mês", money(totalSpent), `${items.length} despesa(s) registrada(s)`, "↘", totalUse >= 100 ? "negative" : "")}${statsCard("Uso do orçamento", `${totalUse.toLocaleString("pt-BR", { maximumFractionDigits: 1 })}%`, totalBudget ? `${money(Math.max(0, totalBudget - totalSpent))} disponíveis no total` : "Defina limites para começar", "◔", totalUse >= 100 ? "negative" : totalUse >= 80 ? "warning" : "")}${statsCard("Projeção até o fim", money(totalProjection), isCurrentMonth ? "Ritmo dos pagamentos registrados até hoje" : "Total já lançado para o período", "⌁", totalBudget && totalProjection > totalBudget ? "negative" : "")}</div><div class="grid two-col budget-layout">${budgetEditor}<section class="card"><div class="section-head"><div><h2>Acompanhamento por categoria</h2><p>${monthLabel(month)} · lançado comparado ao limite</p></div></div><div class="budget-category-list">${categoryCards}</div></section></div><p class="notice budget-note">O valor usado soma as despesas e parcelas lançadas no mês, inclusive compras ainda não pagas. No mês atual, a projeção estima o ritmo dos pagamentos com data registrada e considera também o total já lançado. Rateios de terceiros estão incluídos.</p>`;
+  const controls = `<section class="card budget-view-controls"><div class="section-head"><div><h2>O que acompanhar</h2><p>Esta escolha muda apenas os valores exibidos, não os lançamentos.</p></div></div><div class="form-grid"><div class="field"><label for="budgetScope">Parte considerada</label><select id="budgetScope"><option value="total" ${scope === "total" ? "selected" : ""}>Compromisso total</option><option value="mine" ${scope === "mine" ? "selected" : ""}>Somente a parte atribuída a ${esc(ownerName())}</option></select></div><div class="field"><label for="budgetBasis">Valor comparado ao limite</label><select id="budgetBasis"><option value="committed" ${basis === "committed" ? "selected" : ""}>Lançado / comprometido</option><option value="paid" ${basis === "paid" ? "selected" : ""}>Pago até agora</option></select></div></div></section>`;
+  return `${welcome("Orçamento mensal por categoria", null, "")}${controls}<div class="grid stats budget-summary">${statsCard("Limites definidos", money(totalBudget), `${categoriesWithLimit.length} categoria(s) com orçamento`, "◈")}${statsCard(basis === "paid" ? "Pago no mês" : "Lançado no mês", money(totalSpent), `${scopedItems.length} despesa(s) consideradas`, "↘", totalUse >= 100 ? "negative" : "")}${statsCard("Uso do orçamento", `${totalUse.toLocaleString("pt-BR", { maximumFractionDigits: 1 })}%`, totalBudget ? `${money(Math.max(0, totalBudget - totalSpent))} disponíveis no total` : "Defina limites para começar", "◔", totalUse >= 100 ? "negative" : totalUse >= 80 ? "warning" : "")}${statsCard("Projeção até o fim", money(totalProjection), isCurrentMonth ? basis === "paid" ? "Ritmo dos pagamentos registrados até hoje" : "Ritmo dos pagamentos; inclui o valor já lançado" : basis === "paid" ? "Total pago no período" : "Total lançado no período", "⌁", totalBudget && totalProjection > totalBudget ? "negative" : "")}</div><div class="grid two-col budget-layout">${budgetEditor}<section class="card"><div class="section-head"><div><h2>Acompanhamento por categoria</h2><p>${monthLabel(month)} · ${basis === "paid" ? "pago comparado ao limite" : "lançado comparado ao limite"}</p></div></div><div class="budget-category-list">${categoryCards}</div></section></div><p class="notice budget-note">${basis === "paid" ? "O valor usado soma os pagamentos registrados para o período." : "O valor usado soma os compromissos lançados no mês, inclusive compras ainda não pagas."} ${scope === "total" ? "A visão total inclui os valores atribuídos a terceiros." : `A visão pessoal considera apenas itens atribuídos a ${esc(ownerName())}.`}</p>`;
 }
 function listPage(kind) {
   let isIn = kind === "income",
@@ -1185,6 +1194,8 @@ function act(a, id, index) {
   if (a === "whatsapp") chargeWhatsApp(id);
   if (a === "history-refresh") loadHistory();
   if (a === "history-restore") restoreHistory(id);
+  if (a === "backup-refresh") loadDailyBackups();
+  if (a === "backup-restore") restoreDailyBackup(id);
   if (a === "reimburse") openReimburse(id);
   if (a === "delete") deleteItem(id);
   if (a === "delete-selected") deleteSelectedItems();
@@ -2367,3 +2378,12 @@ function toast(s) {
   t.classList.add("show");
   setTimeout(() => t.classList.remove("show"), 2600);
 }
+document.addEventListener("change", event => {
+  if (!['budgetScope', 'budgetBasis'].includes(event.target?.id)) return;
+  const key = `cdm-budget-view-${authUser?.id || "guest"}-${activeFinanceProfile || "PF"}`;
+  const current = JSON.parse(localStorage.getItem(key) || "{}");
+  if (event.target.id === "budgetScope") current.scope = event.target.value;
+  if (event.target.id === "budgetBasis") current.basis = event.target.value;
+  localStorage.setItem(key, JSON.stringify(current));
+  render();
+});
