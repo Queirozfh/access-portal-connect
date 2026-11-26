@@ -1250,7 +1250,7 @@ async function loadAiUsage() {
       ? "IA desativada pelo administrador"
       : data.limit === null
         ? "Administrador · sem limite mensal de IA"
-        : `${data.used} de 4 análises utilizadas em ${monthLabel(data.month.slice(0, 7))} · renova dia 1º (Fortaleza)`;
+        : `${data.used} de ${data.limit} análises utilizadas em ${monthLabel(data.month.slice(0, 7))} · renova dia 1º (Fortaleza)`;
     let button = document.querySelector("#planForm button");
     if (button) button.disabled = !data.allowed || aiBusy;
   } catch (error) {
