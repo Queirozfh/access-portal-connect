@@ -7,7 +7,8 @@ let cloudSession = null,
   accountRow = "",
   accessBusy = false,
   activeFinanceProfile = "PF",
-  financeProfileStates = {};
+  financeProfileStates = {},
+  cloudVersion = null;
 let pendingSyncBusy = false;
 const LOGIN_LIMIT_KEY = "cdm-login-limit-v1";
 function passwordMeetsPolicy(value) {
@@ -122,37 +123,61 @@ function serializeState() {
     patrimonioApp: financeProfileStates.PF || db,
   };
 }
+async function readProfileState(profile) {
+  const response = await fetch("/api/public/financial-state?profile=" + encodeURIComponent(profile), {
+    cache: "no-store",
+    headers: { Authorization: "Bearer " + (await cloudToken()) },
+  });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    const error = Error(data.error || "Não foi possível carregar os dados online.");
+    error.status = response.status;
+    throw error;
+  }
+  return data;
+}
+function pendingStateKey() { return "cdm-pending-state-" + accountRow; }
 async function readCloudState() {
-  let response = await cloudFetch("/rest/v1/app_state?id=eq." + encodeURIComponent(accountRow) + "&select=json");
-  if (!response.ok) throw Error("Não foi possível carregar os dados online.");
-  let rows = await response.json();
-  let source = rows.length ? JSON.parse(rows[0].json) : {};
-  originalState = source;
-  activeFinanceProfile = localStorage.getItem("cdm-active-finance-profile-" + authUser.id) === "PJ" ? "PJ" : "PF";
+  const preferred = localStorage.getItem("cdm-active-finance-profile-" + authUser.id) === "PJ" ? "PJ" : "PF";
+  let responseData;
+  activeFinanceProfile = preferred;
+  try {
+    responseData = await readProfileState(preferred);
+  } catch (error) {
+    if (preferred !== "PJ" || !navigator.onLine || error.status !== 403) throw error;
+    activeFinanceProfile = "PF";
+    localStorage.setItem("cdm-active-finance-profile-" + authUser.id, "PF");
+    responseData = await readProfileState("PF");
+    toast("Seu nível não permite abrir o perfil PJ.");
+  }
   KEY = financeProfileKey();
-  let queued = localStorage.getItem("cdm-pending-state-" + accountRow);
+  cloudVersion = responseData.updated_at || null;
+  originalState = null;
+  try {
+    financeProfileStates = JSON.parse(localStorage.getItem(financeProfileMapKey()) || "{}");
+  } catch {
+    financeProfileStates = {};
+  }
+  let state = responseData.state || emptyState(authUser.name);
+  const queueKey = pendingStateKey();
+  let queued = localStorage.getItem(queueKey), marker = null;
   if (queued) {
     try {
-      let pending = JSON.parse(queued),
-        cached =
-          localStorage.getItem(KEY) ||
-          (activeFinanceProfile === "PF" ? localStorage.getItem("meu-patrimonio-" + authUser.id) : null);
-      if (pending.id === accountRow && cached && !pending.json) {
-        let local = JSON.parse(cached);
-        if (source.financeProfiles) source.financeProfiles[activeFinanceProfile] = local;
-        else source = { ...source, patrimonioApp: local };
+      marker = JSON.parse(queued);
+      if (!marker.state && marker.json) {
+        const oldState = JSON.parse(marker.json);
+        const oldProfile = oldState.financeProfiles?.[activeFinanceProfile] || (activeFinanceProfile === "PF" ? oldState.patrimonioApp || oldState : null);
+        if (oldProfile) {
+          marker = { profile: activeFinanceProfile, state: JSON.stringify(oldProfile), expectedUpdatedAt: null, legacy: true };
+          localStorage.setItem(queueKey, JSON.stringify(marker));
+        }
       }
-      if (pending.json) source = JSON.parse(pending.json);
-    } catch {}
+      if (marker.profile === activeFinanceProfile && marker.state) state = JSON.parse(marker.state);
+    } catch {
+      marker = null;
+    }
   }
-  financeProfileStates =
-    source.financeProfiles && typeof source.financeProfiles === "object"
-      ? { ...source.financeProfiles }
-      : { PF: source.patrimonioApp || source };
-  if (!financeProfileStates.PF) financeProfileStates.PF = emptyState(authUser.name);
-  if (!financeProfileStates.PJ) financeProfileStates.PJ = emptyState(authUser.name);
-  originalState = source;
-  db = convertState(financeProfileStates[activeFinanceProfile]);
+  db = convertState(state);
   db.settings.ownerName = db.settings.ownerName || authUser.name;
   financeProfileStates[activeFinanceProfile] = db;
   localStorage.setItem(financeProfileMapKey(), JSON.stringify(financeProfileStates));
@@ -167,30 +192,31 @@ function flushPendingState() {
   backendWrites = backendWrites
     .catch(() => {})
     .then(async () => {
-      const queueKey = "cdm-pending-state-" + accountRow;
+      const queueKey = pendingStateKey();
       while (navigator.onLine) {
-        let queued = localStorage.getItem(queueKey);
+        const queued = localStorage.getItem(queueKey);
         if (!queued) break;
-        let marker = JSON.parse(queued),
-          body = JSON.stringify({
-            id: accountRow,
-            json: marker.json || JSON.stringify(serializeState()),
-            updated_at: marker.updated_at || new Date().toISOString(),
-          }),
-          response = await cloudFetch("/rest/v1/app_state?on_conflict=id", {
-            method: "POST",
-            headers: { "Content-Type": "application/json", Prefer: "resolution=merge-duplicates" },
-            body,
-          });
-        if (!response.ok) throw Error("Não foi possível sincronizar as alterações pendentes.");
+        const marker = JSON.parse(queued);
+        const response = await fetch("/api/public/financial-state", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Authorization: "Bearer " + (await cloudToken()) },
+          body: JSON.stringify({ action: "save", profile: marker.profile || activeFinanceProfile, state: JSON.parse(marker.state || JSON.stringify(db)), expectedUpdatedAt: marker.expectedUpdatedAt ?? null }),
+        });
+        const data = await response.json().catch(() => ({}));
+        if (response.status === 409) {
+          const conflict = Error(data.error || "Os dados mudaram em outro dispositivo. Atualize e compare antes de salvar.");
+          conflict.code = "state-conflict";
+          throw conflict;
+        }
+        if (!response.ok) throw Error(data.error || "Não foi possível sincronizar as alterações pendentes.");
+        cloudVersion = data.updated_at || cloudVersion;
         if (localStorage.getItem(queueKey) === queued) localStorage.removeItem(queueKey);
       }
-      document.querySelector("#saveStatus").textContent = navigator.onLine
-        ? "Salvo online"
-        : "Offline · alterações em fila";
+      document.querySelector("#saveStatus").textContent = navigator.onLine ? "Salvo online" : "Offline · alterações em fila";
     })
-    .catch(() => {
-      document.querySelector("#saveStatus").textContent = "Offline · alterações em fila";
+    .catch((error) => {
+      document.querySelector("#saveStatus").textContent = error.code === "state-conflict" ? "Conflito · dados preservados nesta sessão" : "Offline · alterações em fila";
+      if (error.code === "state-conflict") toast(error.message);
     })
     .finally(() => {
       pendingSyncBusy = false;
@@ -204,28 +230,60 @@ function save() {
   }
   if (typeof normalizeItemOrder === "function") normalizeItemOrder();
   financeProfileStates[activeFinanceProfile] = db;
-  let row = accountRow,
-    queueKey = "cdm-pending-state-" + row,
-    payload = serializeState(),
-    updatedAt = new Date().toISOString();
+  const queueKey = pendingStateKey();
+  let existing = null;
+  try { existing = JSON.parse(localStorage.getItem(queueKey) || "null"); } catch {}
+  if (existing && existing.profile && existing.profile !== activeFinanceProfile) {
+    toast("Sincronize as alterações pendentes antes de trocar de perfil.");
+    return;
+  }
+  const marker = {
+    profile: activeFinanceProfile,
+    state: JSON.stringify(db),
+    expectedUpdatedAt: existing ? existing.expectedUpdatedAt : cloudVersion,
+  };
   localStorage.setItem(KEY, JSON.stringify(db));
   localStorage.setItem(financeProfileMapKey(), JSON.stringify(financeProfileStates));
-  localStorage.setItem(queueKey, JSON.stringify({ id: row, updated_at: updatedAt, json: JSON.stringify(payload) }));
+  localStorage.setItem(queueKey, JSON.stringify(marker));
   document.querySelector("#saveStatus").textContent = navigator.onLine ? "Salvando…" : "Offline · alterações em fila";
   if (navigator.onLine) flushPendingState();
 }
 async function switchFinanceProfile(profile) {
-  if (!["PF", "PJ"].includes(profile) || profile === activeFinanceProfile) return;
-  if (!authUser) return;
+  if (!["PF", "PJ"].includes(profile) || profile === activeFinanceProfile || !authUser) return;
+  if (profile === "PJ" && !hasFeature("profile.pj")) {
+    toast("O perfil PJ está disponível somente para o nível 5.");
+    return;
+  }
   save();
-  financeProfileStates[activeFinanceProfile] = db;
-  localStorage.setItem(financeProfileMapKey(), JSON.stringify(financeProfileStates));
+  await backendWrites;
+  if (localStorage.getItem(pendingStateKey())) {
+    toast("Resolva ou sincronize as alterações pendentes antes de trocar de perfil.");
+    return;
+  }
+  let nextState;
+  if (navigator.onLine) {
+    try {
+      const remote = await readProfileState(profile);
+      nextState = remote.state || emptyState(authUser.name);
+      cloudVersion = remote.updated_at || null;
+    } catch (error) {
+      toast(error.message || "Não foi possível validar o acesso a este perfil.");
+      return;
+    }
+  } else {
+    if (profile === "PJ") {
+      toast("Conecte-se para validar o acesso ao perfil PJ.");
+      return;
+    }
+    nextState = financeProfileStates.PF || JSON.parse(localStorage.getItem("meu-patrimonio-" + authUser.id) || "null") || emptyState(authUser.name);
+  }
   activeFinanceProfile = profile;
   localStorage.setItem("cdm-active-finance-profile-" + authUser.id, profile);
   KEY = financeProfileKey();
-  db = convertState(financeProfileStates[profile] || emptyState(authUser.name));
+  db = convertState(nextState);
   db.settings.ownerName = db.settings.ownerName || authUser.name;
   financeProfileStates[profile] = db;
+  localStorage.setItem(financeProfileMapKey(), JSON.stringify(financeProfileStates));
   localStorage.setItem(KEY, JSON.stringify(db));
   applyTheme();
   render();
@@ -1203,9 +1261,10 @@ async function loadHistory() {
   if (!target) return;
   try {
     await backendWrites;
-    let response = await cloudFetch("/rest/v1/app_state_history?select=id,saved_at&order=id.desc&limit=7");
-    if (!response.ok) throw Error("Não foi possível carregar o histórico.");
-    let rows = await response.json();
+    let response = await fetch("/api/public/financial-state?history=1", { cache: "no-store", headers: { Authorization: "Bearer " + (await cloudToken()) } });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) throw Error(data.error || "Não foi possível carregar o histórico.");
+    let rows = data.rows || [];
     target.innerHTML = rows.length
       ? `<table><thead><tr><th>Estado salvo em (Fortaleza)</th><th>Ação</th></tr></thead><tbody>${rows.map((row) => `<tr><td>${esc(new Date(row.saved_at).toLocaleString("pt-BR", { timeZone: "America/Fortaleza" }))}</td><td><button class="btn secondary" data-action="history-restore" data-id="${row.id}">↶ Restaurar</button></td></tr>`).join("")}</tbody></table>`
       : '<div class="empty">O histórico começa na próxima alteração salva online.</div>';
@@ -1223,12 +1282,14 @@ async function restoreHistory(id) {
     return;
   try {
     await backendWrites;
-    let response = await cloudFetch("/rest/v1/rpc/restore_financial_state", {
+    let response = await fetch("/api/public/financial-state", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ p_history_id: Number(id) }),
+      headers: { "Content-Type": "application/json", Authorization: "Bearer " + (await cloudToken()) },
+      body: JSON.stringify({ action: "restore", profile: activeFinanceProfile, historyId: Number(id), expectedUpdatedAt: cloudVersion }),
     });
-    if (!response.ok || (await response.json()) !== true) throw Error("Versão indisponível ou acesso expirado.");
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) throw Error(data.error || "Versão indisponível ou acesso expirado.");
+    cloudVersion = data.updated_at || cloudVersion;
     await readCloudState();
     applyTheme();
     render();
