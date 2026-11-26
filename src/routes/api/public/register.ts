@@ -5,24 +5,9 @@ import { publicSession, refreshCookie, rejectCrossSiteRequest } from "@/lib/sess
 
 const json = (body: unknown, status = 200, extraHeaders?: HeadersInit) =>
   new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json", "Cache-Control": "no-store", ...Object.fromEntries(new Headers(extraHeaders)) } });
-type Attempt = { count: number; until: number };
-const signupAttempts = new Map<string, Attempt>();
-const loginAttempts = new Map<string, Attempt>();
-const attemptWindow = 15 * 60 * 1000;
-function allowAttempt(store: Map<string, Attempt>, ip: string) {
-  const now = Date.now();
-  let attempt = store.get(ip);
-  if (!attempt || attempt.until <= now) {
-    attempt = { count: 0, until: now + attemptWindow };
-    store.set(ip, attempt);
-  }
-  if (attempt.count >= 5) return false;
-  attempt.count++;
-  if (store.size > 5000) {
-    for (const [key, value] of store) if (value.until <= now) store.delete(key);
-    if (store.size > 5000) store.delete(store.keys().next().value!);
-  }
-  return true;
+async function authAttemptKey(ip: string) {
+  const bytes = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(ip));
+  return Array.from(new Uint8Array(bytes), (value) => value.toString(16).padStart(2, "0")).join("");
 }
 function signupErrorMessage(error: { code?: string; message?: string; status?: number }): string {
   const code = String(error.code || "").toLowerCase(),
@@ -66,13 +51,18 @@ export const Route = createFileRoute("/api/public/register")({
             .trim()
             .toLowerCase(),
           password = String(body.password || "");
-        if (!allowAttempt(isLogin ? loginAttempts : signupAttempts, ip))
+        const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+        const attemptKey = await authAttemptKey(ip);
+        const action = isLogin ? "login" : "signup";
+        const { data: attemptAllowed, error: attemptError } = await supabaseAdmin.rpc("consume_auth_attempt", {
+          p_key: attemptKey, p_action: action, p_limit: 5, p_window_seconds: 900,
+        });
+        if (attemptError) return json({ error: "O controle de acesso está temporariamente indisponível." }, 503);
+        if (attemptAllowed !== true)
           return json(
-            {
-              error: isLogin
+            { error: isLogin
                 ? "Muitas tentativas de login. Aguarde 15 minutos e tente novamente."
-                : "Muitas tentativas de cadastro. Aguarde 15 minutos e tente novamente.",
-            },
+                : "Muitas tentativas de cadastro. Aguarde 15 minutos e tente novamente." },
             429,
           );
         if (!validEmail(email)) return json({ error: "Informe um e-mail válido." }, 400);
@@ -116,7 +106,7 @@ export const Route = createFileRoute("/api/public/register")({
           }
           if (!data.session)
             return json({ error: "Não foi possível iniciar a sessão. Confirme seu e-mail e tente novamente." }, 401);
-          loginAttempts.delete(ip);
+          await supabaseAdmin.rpc('reset_auth_attempts', { p_key: attemptKey, p_action: 'login' });
           return json({ ok: true, session: publicSession(data.session) }, 200, { "Set-Cookie": refreshCookie(data.session.refresh_token) });
         }
         const { data, error } = await authClient.auth.signUp({ email, password });
@@ -129,10 +119,10 @@ export const Route = createFileRoute("/api/public/register")({
         }
         const user = data.user;
         if (!user) return json({ error: "Não foi possível concluir o cadastro. Tente novamente." }, 400);
+        await supabaseAdmin.rpc("reset_auth_attempts", { p_key: attemptKey, p_action: "signup" });
         if (Array.isArray(user.identities) && user.identities.length === 0)
           return json({ ok: true, confirmationRequired: true });
         try {
-          const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
           const { data: fresh, error: lookupError } = await supabaseAdmin.auth.admin.getUserById(user.id);
           if (lookupError || !fresh.user) throw new Error("Cadastro indisponível.");
           const metadata = (fresh.user.app_metadata || {}) as Record<string, unknown>;
@@ -158,7 +148,6 @@ export const Route = createFileRoute("/api/public/register")({
           ]);
           if (levelError || stateError) throw new Error("Cadastro indisponível.");
         } catch {
-          const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
           await supabaseAdmin.auth.admin.deleteUser(user.id).catch(() => {});
           await supabaseAdmin.from("app_state").delete().eq("id", user.id);
           return json({ error: "Não foi possível preparar a conta. Tente novamente mais tarde." }, 503);

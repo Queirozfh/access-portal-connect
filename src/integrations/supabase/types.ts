@@ -124,6 +124,18 @@ export type Database = {
         Args: { p_history_id: number }
         Returns: boolean
       }
+      consume_auth_attempt: {
+        Args: { p_action: string; p_key: string; p_limit?: number; p_window_seconds?: number }
+        Returns: boolean
+      }
+      reset_auth_attempts: {
+        Args: { p_action: string; p_key: string }
+        Returns: undefined
+      }
+      save_app_state_if_version: {
+        Args: { p_expected_updated_at: string | null; p_id: string; p_json: string }
+        Returns: Json
+      }
     }
     Enums: {
       app_role: "admin" | "user"

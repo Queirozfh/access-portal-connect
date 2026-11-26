@@ -46,7 +46,38 @@ quickExpense=function(){baseBusinessQuickExpense();if(!isBusinessProfile())retur
 const businessExpenseTypes={fixed:'Custo fixo',tax:'Imposto / tributo',payroll:'Pró-labore / folha',variable:'Custo variável'};
 const baseBusinessItemsTable=itemsTable;
 itemsTable=function(items,...args){if(!isBusinessProfile())return baseBusinessItemsTable(items,...args);const decorated=items.map(item=>{const labels=[];if(item.kind==='income'){const status={yes:'NF emitida',no:'NF não emitida',not_applicable:'NF não aplicável'}[item.invoiceStatus]||'NF não informada';labels.push(status);if(item.counterparty)labels.push('Cliente: '+item.counterparty)}if(item.kind==='expense'&&item.businessExpenseType)labels.push(businessExpenseTypes[item.businessExpenseType]||'Despesa operacional');return labels.length?{...item,notes:[item.notes,...labels].filter(Boolean).join(' · ')}:item});return baseBusinessItemsTable(decorated,...args)};
-function businessReceivablesPanel(){const groups=new Map();for(const item of typeItems('income',selected())){const client=item.counterparty||'Cliente não informado',row=groups.get(client)||{items:[],total:0,received:0,open:0,withoutInvoice:0};row.items.push(item);row.total+=Number(item.amount||0);row.received+=Math.min(Number(item.amount||0),Math.max(0,paid(item,selected())));row.open+=remaining(item,selected());if(item.invoiceStatus==='no')row.withoutInvoice++;groups.set(client,row)}return `<div class="spacer"></div><section class="card"><div class="section-head"><div><h2>Contas a receber por cliente</h2><p>${monthLabel(selected())} · faturamento, recebimentos e notas fiscais</p></div></div><div class="table-wrap"><table><thead><tr><th>Cliente</th><th>Faturado</th><th>Recebido</th><th>Em aberto</th><th>Notas fiscais</th></tr></thead><tbody>${[...groups].map(([client,row])=>`<tr><td>${esc(client)}${row.open>0?`<button class="mini-btn" data-action="business-whatsapp" data-id="${esc(client)}">Cobrar no WhatsApp</button>`:''}</td><td>${money(row.total)}</td><td>${money(row.received)}</td><td>${money(row.open)}</td><td>${row.withoutInvoice?`<span class="badge pending">${row.withoutInvoice} pendente(s)</span>`:'Em dia'}</td></tr>`).join('')||'<tr><td colspan="5">Nenhum faturamento registrado neste mês.</td></tr>'}</tbody></table></div></section>`}
+function businessReceivablesPanel(){
+  const groups=new Map(),currentMonth=isoMonth(new Date());
+  for(const item of typeItems('income',selected())){
+    const client=item.counterparty||'Cliente não informado',row=groups.get(client)||{items:[],total:0,received:0,open:0,withoutInvoice:0,earliestDue:''};
+    row.items.push(item);row.total+=Number(item.amount||0);
+    row.received+=Math.min(Number(item.amount||0),Math.max(0,paid(item,selected())));
+    row.open+=remaining(item,selected());
+    if(item.invoiceStatus==='no')row.withoutInvoice++;
+    if(item.due&&(!row.earliestDue||item.due<row.earliestDue))row.earliestDue=item.due;
+    groups.set(client,row);
+  }
+  const rows=[...groups].map(([client,row])=>{
+    const overdue=row.items.some(item=>remaining(item,selected())>0&&item.due&&item.due<currentMonth);
+    const status=row.open<=0?'settled':overdue?'overdue':'open';
+    return {client,row,status};
+  }).sort((a,b)=>b.row.open-a.row.open||a.client.localeCompare(b.client,'pt-BR'));
+  return `<div class="spacer"></div><section class="card business-receivables"><div class="section-head"><div><h2>Contas a receber por cliente</h2><p>${monthLabel(selected())} · faturamento, vencimentos e notas fiscais</p></div></div><div class="filters business-receivables-filters"><input type="search" id="businessReceivableSearch" placeholder="Buscar cliente" aria-label="Buscar cliente"><select id="businessReceivableStatus" aria-label="Filtrar por situação"><option value="">Todas as situações</option><option value="open">Em aberto</option><option value="overdue">Vencidas</option><option value="settled">Quitadas</option><option value="invoice">Nota fiscal pendente</option></select></div><div class="table-wrap"><table><thead><tr><th>Cliente</th><th>Faturado</th><th>Recebido</th><th>Em aberto</th><th>Próximo vencimento</th><th>Notas fiscais</th></tr></thead><tbody>${rows.map(({client,row,status})=>`<tr data-business-client="${esc(client.toLocaleLowerCase('pt-BR'))}" data-business-status="${status}" data-business-invoice="${row.withoutInvoice?'no':'yes'}"><td><strong>${esc(client)}</strong>${row.open>0?`<button class="mini-btn" data-action="business-whatsapp" data-id="${esc(client)}">Cobrar no WhatsApp</button>`:''}</td><td>${money(row.total)}</td><td>${money(row.received)}</td><td>${money(row.open)}${status==='overdue'?'<span class="badge pending business-overdue">Vencido</span>':''}</td><td>${row.earliestDue?monthLabel(row.earliestDue):'—'}</td><td>${row.withoutInvoice?`<span class="badge pending">${row.withoutInvoice} pendente(s)</span>`:'Em dia'}</td></tr>`).join('')||'<tr><td colspan="6">Nenhum faturamento registrado neste mês.</td></tr>'}</tbody></table></div><p class="empty business-receivables-empty" hidden>Nenhum cliente corresponde aos filtros.</p></section>`;
+}
+document.addEventListener('input',event=>{if(event.target?.id==='businessReceivableSearch')filterBusinessReceivables()});
+document.addEventListener('change',event=>{if(event.target?.id==='businessReceivableStatus')filterBusinessReceivables()});
+function filterBusinessReceivables(){
+  const root=document.querySelector('.business-receivables');if(!root)return;
+  const query=(root.querySelector('#businessReceivableSearch')?.value||'').trim().toLocaleLowerCase('pt-BR');
+  const status=root.querySelector('#businessReceivableStatus')?.value||'';
+  let visible=0;
+  root.querySelectorAll('[data-business-client]').forEach(row=>{
+    const matchesName=row.dataset.businessClient.includes(query);
+    const matchesStatus=!status||row.dataset.businessStatus===status||(status==='invoice'&&row.dataset.businessInvoice==='no');
+    row.hidden=!(matchesName&&matchesStatus);if(!row.hidden)visible++;
+  });
+  const empty=root.querySelector('.business-receivables-empty');if(empty)empty.hidden=visible>0;
+}
 const baseBusinessCollectionPage=collectionPage;
 collectionPage=function(){return isBusinessProfile()?businessReceivablesPanel():baseBusinessCollectionPage()};
 function openBusinessWhatsApp(client){const items=typeItems('income',selected()).filter(item=>(item.counterparty||'Cliente não informado')===client&&remaining(item,selected())>0);if(!items.length){toast('Não há valor em aberto para este cliente neste mês.');return}const company=businessFiscalData(),amount=items.reduce((sum,item)=>sum+remaining(item,selected()),0),phone=db.settings.peoplePhones?.[client],dueDay=Number(company.dueDay)||10,message=`Olá ${client}, segue o detalhamento da cobrança referente aos serviços de ${longMonthLabel(selected())}, com vencimento no dia ${dueDay}.\n\nValor em aberto: ${money(amount)}\n${company.legalName||company.tradeName?`Empresa: ${company.tradeName||company.legalName}\n`:''}${company.cnpj?`CNPJ: ${company.cnpj}\n`:''}${company.pixKey?`Chave Pix CNPJ: ${company.pixKey}\n`:''}\nEm caso de dúvidas, fico à disposição. Obrigado!`;if(!openWhatsAppChat(phone,message)){toast('Cadastre o telefone deste cliente em Ajustes → Clientes, fornecedores e parceiros.');setPage('ajustes')}}

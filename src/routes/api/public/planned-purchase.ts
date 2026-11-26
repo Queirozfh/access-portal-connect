@@ -12,17 +12,21 @@ export const Route = createFileRoute('/api/public/planned-purchase')({
     if (!auth) return json({ error: 'Acesso suspenso ou sessão expirada. Entre novamente.' }, 403);
     const { data: isAdmin, error: roleError } = await auth.client.rpc('has_role', { _user_id: auth.userId, _role: 'admin' });
     if (roleError) return json({ error: 'Não foi possível conferir suas permissões.' }, 503);
-    if (!isAdmin) {
-      try { if (!(await accessPolicyForUser(auth.userId)).features.includes('planning.analyze')) return json({ error: 'Seu nível de acesso não permite analisar compras.' }, 403); }
-      catch { return json({ error: 'Não foi possível consultar seu nível de acesso.' }, 503); }
-    }
     const parsed = plannedPurchaseSchema.safeParse(await request.json().catch(() => null));
     if (!parsed.success) return json({ error: 'Informe descrição, pessoa, valor total, mês e de 1 a 120 parcelas.' }, 400);
+    const profileType = parsed.data.profileType || 'PF';
+    if (!isAdmin) {
+      try {
+        const features = (await accessPolicyForUser(auth.userId)).features;
+        if (!features.includes('planning.analyze')) return json({ error: 'Seu nível de acesso não permite analisar compras.' }, 403);
+        if (profileType === 'PJ' && !features.includes('profile.pj')) return json({ error: 'Seu nível de acesso não permite consultar o perfil PJ.' }, 403);
+      } catch { return json({ error: 'Não foi possível consultar seu nível de acesso.' }, 503); }
+    }
     const id = auth.userId === 'ad46a5e7-af23-4cff-b190-ea6b6140013d' ? 'main' : auth.userId;
-    const { data, error } = await auth.client.from('app_state').select('json').eq('id', id).maybeSingle();
+    const { supabaseAdmin } = await import('@/integrations/supabase/client.server');
+    const { data, error } = await supabaseAdmin.from('app_state').select('json').eq('id', id).maybeSingle();
     if (error || !data) return json({ error: 'Salve seus lançamentos online antes de analisar.' }, 400);
     let state;
-    const profileType = parsed.data.profileType || 'PF';
     try {
       const raw = JSON.parse(data.json);
       const profile = raw.financeProfiles?.[profileType] || (profileType === 'PF' ? raw.patrimonioApp || raw : null);
@@ -33,11 +37,10 @@ export const Route = createFileRoute('/api/public/planned-purchase')({
     if (![state.titular, ...state.people.map(p => p.name)].includes(parsed.data.person)) return json({ error: 'Pessoa não cadastrada nesta conta.' }, 400);
     const key = process.env['LOVABLE_API_KEY'];
     if (!key) return json({ error: 'Lovable AI não está configurada.' }, 401);
-    const { supabaseAdmin } = await import('@/integrations/supabase/client.server');
     const reservation = await supabaseAdmin.rpc('reserve_ai_use', { p_user_id: auth.userId });
     if (reservation.error) return json({ error: 'Não foi possível verificar o limite de IA.' }, 503);
-    const quota = reservation.data as { allowed?: boolean; reason?: string; used?: number } | null;
-    if (!quota?.allowed) return json({ error: quota?.reason === 'disabled' ? 'O administrador desativou a IA para este acesso.' : 'Você utilizou as 4 análises deste mês. O limite será renovado no dia 1º, horário de Fortaleza.' }, 403);
+    const quota = reservation.data as { allowed?: boolean; reason?: string; used?: number; limit?: number } | null;
+    if (!quota?.allowed) return json({ error: quota?.reason === 'disabled' ? 'O administrador desativou a IA para este acesso.' : `Você utilizou ${quota?.used ?? 0} de ${quota?.limit ?? 4} análises deste mês. O limite será renovado no dia 1º, horário de Fortaleza.` }, 403);
     const estimate = estimatePurchase(state, parsed.data);
     const categories = Object.fromEntries(state.cats.map(cat => [cat, state.purchases.filter(p => p.cat === cat).length]));
     const { result } = createResponsesCall(request,
