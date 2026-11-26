@@ -69,7 +69,8 @@ async function readLimitedBody(request: Request, maxBytes: number): Promise<stri
 function stable(value: unknown): string {
   if (Array.isArray(value)) return '[' + value.map(stable).join(',') + ']';
   if (value && typeof value === 'object') return '{' + Object.entries(value as Record<string, unknown>).sort(([a],[b]) => a.localeCompare(b)).map(([key,item]) => JSON.stringify(key)+':'+stable(item)).join(',') + '}';
-  return JSON.stringify(value);
+  const encoded = JSON.stringify(value);
+  return encoded === undefined ? 'undefined' : encoded;
 }
 function itemMap(value: unknown): Map<string, Record<string, unknown>> {
   return new Map((Array.isArray(value) ? value : []).filter((item): item is Record<string, unknown> => !!item && typeof item === 'object').map((item,index) => [String(item.id ?? item.seriesId ?? index), item]));
