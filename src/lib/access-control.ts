@@ -1,5 +1,9 @@
 export const ACCESS_FEATURE_GROUPS = [
   { id: 'home', label: 'Visão geral', features: [{ id: 'home.view', label: 'Abrir fluxo de caixa / início', minLevel: 1 }] },
+  { id: 'budgets', label: 'Orçamento mensal', features: [
+    { id: 'budgets.view', label: 'Consultar orçamento por categoria', minLevel: 1 },
+    { id: 'budgets.manage', label: 'Definir limites mensais por categoria', minLevel: 2 },
+  ] },
   { id: 'receivables', label: 'A receber', features: [
     { id: 'receivable.view', label: 'Consultar contas e valores a receber', minLevel: 1 },
     { id: 'receivable.add', label: 'Cadastrar recebimentos e faturamento', minLevel: 2 },
@@ -76,6 +80,7 @@ export const ACCESS_LEVEL_LABELS: Record<number, string> = {
 };
 export const ALL_ACCESS_FEATURES = [...ACCESS_FEATURE_IDS];
 export const ACCESS_ADMIN_USER_ID = 'ad46a5e7-af23-4cff-b190-ea6b6140013d';
+export const ACCESS_POLICY_VERSION = 2;
 
 export const SELF_SERVICE_SIGNUP_CUTOFF = '2026-11-24T00:00:00.000Z';
 
@@ -100,12 +105,16 @@ export async function accessPolicyForUser(userId: string) {
   // Accounts predating self-service registration retain their legacy full access.
   const fallbackLevel = defaultUserAccessLevel(target.user.created_at);
   const level = Math.max(1, Math.min(5, Number(metadata?.access_level) || fallbackLevel));
-  const adminMetadata = admin.user.app_metadata as { access_policies?: Array<{ level: number; features: string[] }> } | undefined;
+  const adminMetadata = admin.user.app_metadata as { access_policies?: Array<{ level: number; features: string[] }>; access_policy_version?: number } | undefined;
   const policy = adminMetadata?.access_policies?.find(item => Number(item.level) === level);
   const features = Array.isArray(policy?.features)
     ? policy.features.filter((feature): feature is (typeof ACCESS_FEATURE_IDS)[number] =>
       typeof feature === 'string' && (ACCESS_FEATURE_IDS as readonly string[]).includes(feature))
     : defaultAccessFeatures(level);
+  if ((Number(adminMetadata?.access_policy_version) || 1) < ACCESS_POLICY_VERSION) {
+    if (!features.includes('budgets.view')) features.push('budgets.view');
+    if (level >= 2 && !features.includes('budgets.manage')) features.push('budgets.manage');
+  }
   if (level === 5 && !features.includes('profile.pj')) features.push('profile.pj');
   return { level, features };
 }

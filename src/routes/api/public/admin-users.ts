@@ -4,6 +4,7 @@ import type { Database } from "@/integrations/supabase/types";
 import { aiMonth, MONTHLY_AI_LIMIT } from "@/lib/ai-quota";
 import {
   ACCESS_ADMIN_USER_ID,
+  ACCESS_POLICY_VERSION,
   ACCESS_FEATURE_IDS,
   defaultAccessFeatures,
   defaultUserAccessLevel,
@@ -182,7 +183,7 @@ export const Route = createFileRoute("/api/public/admin-users")({
             if (error || !data.user)
               return json({ error: "Não foi possível carregar a configuração do administrador." }, 503);
             const metadata = data.user.app_metadata as
-              { access_policies?: Array<{ level: number; features: string[] }> } | undefined;
+              { access_policies?: Array<{ level: number; features: string[] }>; access_policy_version?: number } | undefined;
             const configured = Array.isArray(metadata?.access_policies) ? metadata.access_policies : [];
             const policies = [1, 2, 3, 4, 5].map((level) => {
               const saved = configured.find((policy) => Number(policy.level) === level);
@@ -191,6 +192,10 @@ export const Route = createFileRoute("/api/public/admin-users")({
                   (ACCESS_FEATURE_IDS as readonly string[]).includes(feature),
                 ),
               );
+              if ((Number(metadata?.access_policy_version) || 1) < ACCESS_POLICY_VERSION) {
+                features.add("budgets.view");
+                if (level >= 2) features.add("budgets.manage");
+              }
               if (level === 5) for (const feature of ACCESS_FEATURE_IDS) features.add(feature);
               return { level, features: [...features] };
             });
@@ -238,7 +243,7 @@ export const Route = createFileRoute("/api/public/admin-users")({
               features: [...new Set(policy.features)].sort(),
             }));
             const { error } = await a.updateUserById(ACCESS_ADMIN_USER_ID, {
-              app_metadata: { ...appMetadata, access_policies: rows },
+              app_metadata: { ...appMetadata, access_policies: rows, access_policy_version: ACCESS_POLICY_VERSION },
             });
             if (error) return json({ error: "Não foi possível salvar a matriz de permissões." }, 500);
             return json({ ok: true });

@@ -269,6 +269,7 @@ function setPage(p) {
   document.querySelectorAll(".nav-item").forEach((b) => b.classList.toggle("active", b.dataset.page === p));
   document.querySelector("#pageTitle").textContent = {
     inicio: "Início",
+    orcamento: "Orçamento",
     entradas: "Entradas",
     exportacao: "Exportação",
     receber: "A receber",
@@ -336,6 +337,7 @@ function render() {
   updateMonthPicker();
   let c = document.querySelector("#content");
   if (page === "inicio") c.innerHTML = enhancedHome();
+  if (page === "orcamento") c.innerHTML = budgetPage();
   if (page === "receber") c.innerHTML = listPage("income");
   if (page === "cobrancas") c.innerHTML = collectionPage();
   if (page === "despesas") c.innerHTML = expensesPage();
@@ -466,6 +468,44 @@ function expensesPage() {
   let chip = (type, value, label, active) =>
     `<button class="expense-chip ${active ? "active" : ""}" data-expense-filter="${type}" data-value="${esc(value)}">${label}</button>`;
   return `<section class="card expense-overview"><div class="expense-intro"><span class="expense-icon">♧</span><div><h2>Compras, parcelas e assinaturas</h2><p>Cadastre cada item uma vez. Os meses seguintes aparecem sozinhos.</p></div></div><div class="expense-summary">Em ${monthLabel(selected())}: <strong>${money(total)}</strong> em itens, sendo <strong>${money(mine)}</strong> seus e <strong>${money(third)}</strong> de terceiros.<button class="btn primary" data-action="add-expense">＋ Novo item</button></div><div class="expense-filter-row">${chip("period", "month", "Neste mês", expensePeriod === "month")}${chip("period", "all", "Todos os itens", expensePeriod === "all")}${people.map((p) => chip("person", p, esc(p), expensePerson === p)).join("")}</div><div class="expense-filter-row categories">${chip("category", "", "Todas as categorias", !expenseCategory)}${categories.map((c) => chip("category", c, esc(c), expenseCategory === c)).join("")}</div>${expensePerson ? `<div class="expense-person-consolidated"><strong>Consolidado de ${esc(expensePerson)}: ${money(personTotal)}</strong><span>${personItems.length} lançamento(s) · ${personScopeTotal ? ((100 * personTotal) / personScopeTotal).toLocaleString("pt-BR", { minimumFractionDigits: 1, maximumFractionDigits: 1 }) : "0,0"}% do total ${expensePeriod === "month" ? "do mês" : "dos períodos selecionados"}</span></div>` : ""}<div class="section-head expense-search"><div><h2>${expensePeriod === "month" ? "Despesas do mês" : "Todos os itens"}</h2><p>${arr.length} lançamento(s) · sua parte ${money(arr.filter((x) => (x.person || ownerName()) === ownerName()).reduce((s, x) => s + Number(x.amount || 0), 0))}</p></div><div class="filters"><input id="searchRows" placeholder="Buscar item" value="${esc(filterText)}"></div></div><div class="subtabs installment-status-tabs" role="tablist" aria-label="Filtrar despesas por situação"><button type="button" class="${expenseStatusFilter === "pending" ? "active" : ""}" data-action="expense-status" data-id="pending" role="tab" aria-selected="${expenseStatusFilter === "pending"}">Pendentes <span>${pendingExpenseCount}</span></button><button type="button" class="${expenseStatusFilter === "paid" ? "active" : ""}" data-action="expense-status" data-id="paid" role="tab" aria-selected="${expenseStatusFilter === "paid"}">Pagos <span>${paidExpenseCount}</span></button><button type="button" class="${expenseStatusFilter === "all" ? "active" : ""}" data-action="expense-status" data-id="all" role="tab" aria-selected="${expenseStatusFilter === "all"}">Todos <span>${statusBase.length}</span></button></div><div id="listTable">${itemsTable(arr, false, true, true)}</div></section>`;
+}
+function budgetPage() {
+  const month = selected();
+  const items = typeItems("expense", month);
+  const monthBudgets = db.settings.monthlyBudgets?.[month] || {};
+  const categories = [...new Set([
+    ...db.categories,
+    ...items.map((item) => item.category || "Sem categoria"),
+    ...Object.keys(monthBudgets),
+  ])].sort((a, b) => a.localeCompare(b, "pt-BR"));
+  const today = new Date();
+  const isCurrentMonth = month === isoMonth(today);
+  const daysInMonth = new Date(Number(month.slice(0, 4)), Number(month.slice(5, 7)), 0).getDate();
+  const elapsedDays = isCurrentMonth ? Math.max(1, today.getDate()) : daysInMonth;
+  const localToday = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,"0")}-${String(today.getDate()).padStart(2,"0")}`;
+  const rows = categories.map((category) => {
+    const categoryItems = items.filter((item) => (item.category || "Sem categoria") === category);
+    const spent = categoryItems.reduce((sum, item) => sum + Number(item.amount || 0), 0);
+    const paidToDate = isCurrentMonth ? categoryItems.reduce((sum, item) => sum + (item.payments || [])
+      .filter((payment) => payment.date?.slice(0, 7) === month && payment.date <= localToday)
+      .reduce((paid, payment) => paid + Number(payment.amount || 0), 0), 0) : spent;
+    const projection = isCurrentMonth ? Math.max(spent, paidToDate / elapsedDays * daysInMonth) : spent;
+    const limit = Math.max(0, Number(monthBudgets[category]) || 0);
+    return { category, spent, projection, limit, count: categoryItems.length };
+  });
+  const totalBudget = rows.reduce((sum, row) => sum + row.limit, 0);
+  const totalSpent = rows.reduce((sum, row) => sum + row.spent, 0);
+  const totalProjection = rows.reduce((sum, row) => sum + row.projection, 0);
+  const categoriesWithLimit = rows.filter((row) => row.limit > 0);
+  const totalUse = totalBudget ? totalSpent / totalBudget * 100 : 0;
+  const budgetEditor = `<section class="card budget-editor"><div class="section-head"><div><h2>Defina seus limites</h2><p>Os valores ficam salvos para ${monthLabel(month)} e são independentes em cada perfil.</p></div></div><div class="budget-limit-list">${rows.map((row) => `<label class="budget-limit-row"><span><strong>${esc(row.category)}</strong><small>${row.count} lançamento(s) neste mês</small></span><span class="budget-input-wrap"><span>R$</span><input type="number" min="0" step="0.01" inputmode="decimal" placeholder="Sem limite" aria-label="Limite mensal para ${esc(row.category)}" data-budget-category="${esc(row.category)}" value="${row.limit || ""}"></span></label>`).join("")}</div><div class="budget-editor-actions"><span class="metric">Deixe em branco para remover o limite.</span><button class="btn primary" data-action="save-budgets">Salvar limites</button></div></section>`;
+  const categoryCards = categoriesWithLimit.length ? categoriesWithLimit.map((row) => {
+    const percent = row.limit ? row.spent / row.limit * 100 : 0;
+    const projectedPercent = row.limit ? row.projection / row.limit * 100 : 0;
+    const status = percent >= 100 ? "over" : percent >= 80 ? "near" : "";
+    return `<article class="budget-category-card ${status}"><div class="budget-category-head"><div><h3>${esc(row.category)}</h3><small>${row.count} lançamento(s)</small></div><span class="budget-percent ${status}">${percent.toLocaleString("pt-BR", { maximumFractionDigits: 0 })}%</span></div><div class="budget-progress" role="img" aria-label="${esc(row.category)}: ${money(row.spent)} de ${money(row.limit)}"><i class="${status}" style="width:${Math.min(percent, 100)}%"></i></div><div class="budget-values"><span>Usado<strong>${money(row.spent)}</strong></span><span>Limite<strong>${money(row.limit)}</strong></span><span>Projeção<strong class="${projectedPercent >= 100 ? "negative" : ""}">${money(row.projection)}</strong></span></div><div class="budget-remaining ${row.spent > row.limit ? "negative" : ""}">${row.spent > row.limit ? `Acima do limite em ${money(row.spent - row.limit)}` : `Restam ${money(row.limit - row.spent)}`}${projectedPercent > 100 ? ` · projeção excede em ${money(row.projection - row.limit)}` : ""}</div></article>`;
+  }).join("") : '<div class="empty">Defina limites para acompanhar seus gastos por categoria.</div>';
+  return `${welcome("Orçamento mensal por categoria", null, "")}<div class="grid stats budget-summary">${statsCard("Limites definidos", money(totalBudget), `${categoriesWithLimit.length} categoria(s) com orçamento`, "◈")}${statsCard("Lançado no mês", money(totalSpent), `${items.length} despesa(s) registrada(s)`, "↘", totalUse >= 100 ? "negative" : "")}${statsCard("Uso do orçamento", `${totalUse.toLocaleString("pt-BR", { maximumFractionDigits: 1 })}%`, totalBudget ? `${money(Math.max(0, totalBudget - totalSpent))} disponíveis no total` : "Defina limites para começar", "◔", totalUse >= 100 ? "negative" : totalUse >= 80 ? "warning" : "")}${statsCard("Projeção até o fim", money(totalProjection), isCurrentMonth ? "Ritmo dos pagamentos registrados até hoje" : "Total já lançado para o período", "⌁", totalBudget && totalProjection > totalBudget ? "negative" : "")}</div><div class="grid two-col budget-layout">${budgetEditor}<section class="card"><div class="section-head"><div><h2>Acompanhamento por categoria</h2><p>${monthLabel(month)} · lançado comparado ao limite</p></div></div><div class="budget-category-list">${categoryCards}</div></section></div><p class="notice budget-note">O valor usado soma as despesas e parcelas lançadas no mês, inclusive compras ainda não pagas. No mês atual, a projeção estima o ritmo dos pagamentos com data registrada e considera também o total já lançado. Rateios de terceiros estão incluídos.</p>`;
 }
 function listPage(kind) {
   let isIn = kind === "income",
@@ -1191,6 +1231,26 @@ function act(a, id, index) {
     save();
     toast("Alertas salvos");
     render();
+  }
+  if (a === "save-budgets") {
+    const budgets = {};
+    for (const input of document.querySelectorAll("[data-budget-category]")) {
+      const raw = input.value.trim();
+      if (!raw) continue;
+      const amount = Number(raw);
+      if (!Number.isFinite(amount) || amount <= 0) {
+        toast("Informe um limite maior que zero ou deixe o campo vazio.");
+        input.focus();
+        return;
+      }
+      budgets[input.dataset.budgetCategory] = Math.round(amount * 100) / 100;
+    }
+    db.settings.monthlyBudgets ||= {};
+    if (Object.keys(budgets).length) db.settings.monthlyBudgets[selected()] = budgets;
+    else delete db.settings.monthlyBudgets[selected()];
+    save();
+    render();
+    toast("Limites do mês salvos");
   }
   if (a === "save-usd") {
     db.settings.usd = Number(document.querySelector("#usdInput").value) || 5.2;
