@@ -17,7 +17,7 @@ import { Route as ApiPublicFeatureAccessRouteImport } from './routes/api/public/
 import { Route as ApiPublicGoogleCalendarConfigRouteImport } from './routes/api/public/google-calendar-config'
 import { Route as ApiPublicLogoutRouteImport } from './routes/api/public/logout'
 import { Route as ApiPublicPlannedPurchaseRouteImport } from './routes/api/public/planned-purchase'
-import { Route as ApiPublicPluggyRouteImport } from './routes/api/public/pluggy'
+import { Route as ApiPublicFinancialStateRouteImport } from './routes/api/public/financial-state'
 import { Route as ApiPublicRegisterRouteImport } from './routes/api/public/register'
 import { Route as ApiPublicSessionRouteImport } from './routes/api/public/session'
 import { Route as ApiPublicTutorialRouteImport } from './routes/api/public/tutorial'
@@ -64,9 +64,9 @@ const ApiPublicPlannedPurchaseRoute =
     path: '/api/public/planned-purchase',
     getParentRoute: () => rootRouteImport,
   } as any)
-const ApiPublicPluggyRoute = ApiPublicPluggyRouteImport.update({
-  id: '/api/public/pluggy',
-  path: '/api/public/pluggy',
+const ApiPublicFinancialStateRoute = ApiPublicFinancialStateRouteImport.update({
+  id: '/api/public/financial-state',
+  path: '/api/public/financial-state',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiPublicRegisterRoute = ApiPublicRegisterRouteImport.update({
@@ -94,7 +94,7 @@ export interface FileRoutesByFullPath {
   '/api/public/google-calendar-config': typeof ApiPublicGoogleCalendarConfigRoute
   '/api/public/logout': typeof ApiPublicLogoutRoute
   '/api/public/planned-purchase': typeof ApiPublicPlannedPurchaseRoute
-  '/api/public/pluggy': typeof ApiPublicPluggyRoute
+  '/api/public/financial-state': typeof ApiPublicFinancialStateRoute
   '/api/public/register': typeof ApiPublicRegisterRoute
   '/api/public/session': typeof ApiPublicSessionRoute
   '/api/public/tutorial': typeof ApiPublicTutorialRoute
@@ -108,7 +108,7 @@ export interface FileRoutesByTo {
   '/api/public/google-calendar-config': typeof ApiPublicGoogleCalendarConfigRoute
   '/api/public/logout': typeof ApiPublicLogoutRoute
   '/api/public/planned-purchase': typeof ApiPublicPlannedPurchaseRoute
-  '/api/public/pluggy': typeof ApiPublicPluggyRoute
+  '/api/public/financial-state': typeof ApiPublicFinancialStateRoute
   '/api/public/register': typeof ApiPublicRegisterRoute
   '/api/public/session': typeof ApiPublicSessionRoute
   '/api/public/tutorial': typeof ApiPublicTutorialRoute
@@ -123,7 +123,7 @@ export interface FileRoutesById {
   '/api/public/google-calendar-config': typeof ApiPublicGoogleCalendarConfigRoute
   '/api/public/logout': typeof ApiPublicLogoutRoute
   '/api/public/planned-purchase': typeof ApiPublicPlannedPurchaseRoute
-  '/api/public/pluggy': typeof ApiPublicPluggyRoute
+  '/api/public/financial-state': typeof ApiPublicFinancialStateRoute
   '/api/public/register': typeof ApiPublicRegisterRoute
   '/api/public/session': typeof ApiPublicSessionRoute
   '/api/public/tutorial': typeof ApiPublicTutorialRoute
@@ -139,7 +139,7 @@ export interface FileRouteTypes {
     | '/api/public/google-calendar-config'
     | '/api/public/logout'
     | '/api/public/planned-purchase'
-    | '/api/public/pluggy'
+    | '/api/public/financial-state'
     | '/api/public/register'
     | '/api/public/session'
     | '/api/public/tutorial'
@@ -153,7 +153,7 @@ export interface FileRouteTypes {
     | '/api/public/google-calendar-config'
     | '/api/public/logout'
     | '/api/public/planned-purchase'
-    | '/api/public/pluggy'
+    | '/api/public/financial-state'
     | '/api/public/register'
     | '/api/public/session'
     | '/api/public/tutorial'
@@ -167,7 +167,7 @@ export interface FileRouteTypes {
     | '/api/public/google-calendar-config'
     | '/api/public/logout'
     | '/api/public/planned-purchase'
-    | '/api/public/pluggy'
+    | '/api/public/financial-state'
     | '/api/public/register'
     | '/api/public/session'
     | '/api/public/tutorial'
@@ -182,7 +182,7 @@ export interface RootRouteChildren {
   ApiPublicGoogleCalendarConfigRoute: typeof ApiPublicGoogleCalendarConfigRoute
   ApiPublicLogoutRoute: typeof ApiPublicLogoutRoute
   ApiPublicPlannedPurchaseRoute: typeof ApiPublicPlannedPurchaseRoute
-  ApiPublicPluggyRoute: typeof ApiPublicPluggyRoute
+  ApiPublicFinancialStateRoute: typeof ApiPublicFinancialStateRoute
   ApiPublicRegisterRoute: typeof ApiPublicRegisterRoute
   ApiPublicSessionRoute: typeof ApiPublicSessionRoute
   ApiPublicTutorialRoute: typeof ApiPublicTutorialRoute
@@ -246,11 +246,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicPlannedPurchaseRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/public/pluggy': {
-      id: '/api/public/pluggy'
-      path: '/api/public/pluggy'
-      fullPath: '/api/public/pluggy'
-      preLoaderRoute: typeof ApiPublicPluggyRouteImport
+    '/api/public/financial-state': {
+      id: '/api/public/financial-state'
+      path: '/api/public/financial-state'
+      fullPath: '/api/public/financial-state'
+      preLoaderRoute: typeof ApiPublicFinancialStateRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/public/register': {
@@ -286,7 +286,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicGoogleCalendarConfigRoute: ApiPublicGoogleCalendarConfigRoute,
   ApiPublicLogoutRoute: ApiPublicLogoutRoute,
   ApiPublicPlannedPurchaseRoute: ApiPublicPlannedPurchaseRoute,
-  ApiPublicPluggyRoute: ApiPublicPluggyRoute,
+  ApiPublicFinancialStateRoute: ApiPublicFinancialStateRoute,
   ApiPublicRegisterRoute: ApiPublicRegisterRoute,
   ApiPublicSessionRoute: ApiPublicSessionRoute,
   ApiPublicTutorialRoute: ApiPublicTutorialRoute,
