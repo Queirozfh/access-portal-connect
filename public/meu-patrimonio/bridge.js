@@ -553,6 +553,7 @@ async function accessRequest(url, method = "GET", body = {}) {
           accessLevel: u.access_level || 1,
           aiEnabled: u.ai_enabled,
           aiUsed: u.ai_used,
+          aiLimit: u.ai_limit ?? 4,
           aiMonth: billingMonth(),
           lastChangedAt: u.stats?.updated_at || u.created_at,
           monthCount: u.stats?.ativos || 0,
