@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { createClient } from "@supabase/supabase-js";
 import type { Database } from "@/integrations/supabase/types";
-import { aiMonth } from "@/lib/ai-quota";
+import { aiMonth, MONTHLY_AI_LIMIT } from "@/lib/ai-quota";
 import {
   ACCESS_ADMIN_USER_ID,
   ACCESS_FEATURE_IDS,
@@ -52,6 +52,7 @@ export const Route = createFileRoute("/api/public/admin-users")({
           enabled?: boolean;
           access_level?: number;
           policies?: Array<{ level: number; features: string[] }>;
+          limit?: number;
         };
         try {
           body = await request.json();
@@ -144,7 +145,8 @@ export const Route = createFileRoute("/api/public/admin-users")({
             const key = (id: string) => (id === adminId ? (stats[id] ? id : "main") : id);
             return json({
               users: data.users.map((u) => {
-                const metadata = u.app_metadata as { expires_at?: string; access_level?: number } | undefined;
+                const metadata = u.app_metadata as
+                  { expires_at?: string; access_level?: number; ai_monthly_limit?: number } | undefined;
                 return {
                   id: u.id,
                   name: names[u.id] || names[key(u.id)] || "",
@@ -162,7 +164,14 @@ export const Route = createFileRoute("/api/public/admin-users")({
                     u.id === adminId ? 5 : Number(metadata?.access_level) || defaultUserAccessLevel(u.created_at),
                   ai_enabled: aiPermissions.get(u.id) ?? true,
                   ai_used: aiUsage.get(u.id) ?? 0,
-                  ai_limit: u.id === adminId ? null : 4,
+                  ai_limit:
+                    u.id === adminId
+                      ? null
+                      : Number.isInteger(metadata?.ai_monthly_limit) &&
+                          Number(metadata.ai_monthly_limit) >= 0 &&
+                          Number(metadata.ai_monthly_limit) <= 10000
+                        ? Number(metadata.ai_monthly_limit)
+                        : MONTHLY_AI_LIMIT,
                   access_levels_ready: true,
                 };
               }),
@@ -255,6 +264,25 @@ export const Route = createFileRoute("/api/public/admin-users")({
               .upsert({ user_id: id, enabled: body.enabled });
             if (error) return json({ error: "Não foi possível alterar a permissão." }, 500);
             return json({ ok: true });
+          }
+          case "ai-limit": {
+            const limit = Number(body.limit);
+            if (
+              !/^[0-9a-f-]{36}$/i.test(id) ||
+              !Number.isInteger(limit) ||
+              limit < 0 ||
+              limit > 10000 ||
+              id === adminId
+            )
+              return json({ error: "Limite de IA inválido. Use um número inteiro de 0 a 10000." }, 400);
+            const { data: target, error: lookupError } = await a.getUserById(id);
+            if (lookupError || !target.user) return json({ error: "Acesso não encontrado." }, 404);
+            const metadata = (target.user.app_metadata || {}) as Record<string, unknown>;
+            const { error } = await a.updateUserById(id, {
+              app_metadata: { ...metadata, ai_monthly_limit: limit },
+            });
+            if (error) return json({ error: "Não foi possível salvar o limite de IA." }, 500);
+            return json({ ok: true, limit });
           }
           case "create": {
             if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || email.length > 255)
