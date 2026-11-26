@@ -1,9 +1,10 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { createClient } from "@supabase/supabase-js";
 import type { Database } from "@/integrations/supabase/types";
+import { publicSession, refreshCookie, rejectCrossSiteRequest } from "@/lib/session-cookie.server";
 
-const json = (body: unknown, status = 200) =>
-  new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json" } });
+const json = (body: unknown, status = 200, extraHeaders?: HeadersInit) =>
+  new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json", "Cache-Control": "no-store", ...Object.fromEntries(new Headers(extraHeaders)) } });
 type Attempt = { count: number; until: number };
 const signupAttempts = new Map<string, Attempt>();
 const loginAttempts = new Map<string, Attempt>();
@@ -52,7 +53,8 @@ export const Route = createFileRoute("/api/public/register")({
   server: {
     handlers: {
       POST: async ({ request }) => {
-        const ip = request.headers.get("cf-connecting-ip") || request.headers.get("x-real-ip") || "unknown";
+        if (rejectCrossSiteRequest(request)) return json({ error: "Origem inválida." }, 403);
+        const ip = request.headers.get("cf-connecting-ip") || "unknown";
         let body: { action?: unknown; email?: unknown; password?: unknown };
         try {
           body = await request.json();
@@ -115,7 +117,7 @@ export const Route = createFileRoute("/api/public/register")({
           if (!data.session)
             return json({ error: "Não foi possível iniciar a sessão. Confirme seu e-mail e tente novamente." }, 401);
           loginAttempts.delete(ip);
-          return json({ ok: true, session: data.session });
+          return json({ ok: true, session: publicSession(data.session) }, 200, { "Set-Cookie": refreshCookie(data.session.refresh_token) });
         }
         const { data, error } = await authClient.auth.signUp({ email, password });
         if (error) {
@@ -161,7 +163,7 @@ export const Route = createFileRoute("/api/public/register")({
           await supabaseAdmin.from("app_state").delete().eq("id", user.id);
           return json({ error: "Não foi possível preparar a conta. Tente novamente mais tarde." }, 503);
         }
-        return json({ ok: true, confirmationRequired: !data.session, session: data.session });
+        return json({ ok: true, confirmationRequired: !data.session, session: data.session ? publicSession(data.session) : null }, 200, data.session ? { "Set-Cookie": refreshCookie(data.session.refresh_token) } : undefined);
       },
     },
   },

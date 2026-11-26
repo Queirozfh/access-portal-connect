@@ -28,69 +28,9 @@ function emptyState(name = "Eu") {
 function load() {
   return emptyState(authUser?.name || "Eu");
 }
-async function cloudToken() {
-  if (!cloudSession) throw Error("Entre novamente.");
-  if (Date.now() > cloudSession.exp) {
-    await cloudLogin({ refresh_token: cloudSession.rt }, "refresh_token");
-  }
-  return cloudSession.at;
-}
-async function cloudLogin(body, grant = "password") {
-  const now = Date.now();
-  let attemptsState = null;
-  if (grant === "password") {
-    try {
-      attemptsState = JSON.parse(localStorage.getItem(LOGIN_LIMIT_KEY) || "null");
-    } catch {}
-    if (attemptsState?.blockedUntil > now)
-      throw Error("Muitas tentativas de login. Aguarde alguns minutos e tente novamente.");
-    if (!attemptsState || now - attemptsState.startedAt >= 15 * 60 * 1000) {
-      attemptsState = null;
-      localStorage.removeItem(LOGIN_LIMIT_KEY);
-    }
-  }
-  let response, data;
-  if (grant === "password") {
-    response = await fetch("/api/public/register", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ action: "login", email: body.email, password: body.password }),
-    });
-    data = await response.json().catch(() => ({}));
-  } else {
-    response = await fetch(CLOUD + "/auth/v1/token?grant_type=" + grant, {
-      method: "POST",
-      headers: { apikey: PUBLIC_KEY, "Content-Type": "application/json" },
-      body: JSON.stringify(body),
-    });
-    data = await response.json().catch(() => ({}));
-  }
-  if (!response.ok) {
-    if (grant === "password" && [401, 429].includes(response.status)) {
-      const state = attemptsState || { count: 0, startedAt: now, blockedUntil: 0 };
-      state.count++;
-      if (state.count >= 5) {
-        state.blockedUntil = Date.now() + 15 * 60 * 1000;
-        localStorage.setItem(LOGIN_LIMIT_KEY, JSON.stringify(state));
-        throw Error("Muitas tentativas de login. Aguarde 15 minutos antes de tentar novamente.");
-      }
-      localStorage.setItem(LOGIN_LIMIT_KEY, JSON.stringify(state));
-    }
-    throw Error(
-      data.error_code === "user_banned"
-        ? "suspenso"
-        : data.error || data.msg || data.error_description || "E-mail ou senha incorretos.",
-    );
-  }
-  if (grant === "password") localStorage.removeItem(LOGIN_LIMIT_KEY);
-  const session = grant === "password" ? data.session : data;
-  cloudSession = {
-    at: session.access_token,
-    rt: session.refresh_token,
-    exp: Date.now() + (session.expires_in - 60) * 1000,
-  };
-  localStorage.setItem("cdm-sessao", JSON.stringify(cloudSession));
-}
+async function refreshCloudSession(legacyRefreshToken){let response=await fetch("/api/public/session",{method:"POST",credentials:"same-origin",headers:{"Content-Type":"application/json"},body:JSON.stringify(legacyRefreshToken?{refresh_token:legacyRefreshToken}:{})}),data=await response.json().catch(()=>({}));if(!response.ok)throw Error(data.error||"Sua sessão expirou.");cloudSession={at:data.access_token,exp:Date.now()+(data.expires_in-60)*1000};return cloudSession}
+async function cloudToken(){if(!cloudSession)throw Error("Entre novamente.");if(Date.now()>cloudSession.exp)await refreshCloudSession();return cloudSession.at}
+async function cloudLogin(body){let response=await fetch("/api/public/register",{method:"POST",credentials:"same-origin",headers:{"Content-Type":"application/json"},body:JSON.stringify({action:"login",email:body.email,password:body.password})}),data=await response.json().catch(()=>({}));if(!response.ok)throw Error(data.error_code==="user_banned"?"suspenso":data.error||data.msg||"E-mail ou senha incorretos.");let session=data.session;cloudSession={at:session.access_token,exp:Date.now()+(session.expires_in-60)*1000};localStorage.removeItem("cdm-sessao")}
 async function cloudFetch(path, options = {}) {
   let headers = { ...options.headers, apikey: PUBLIC_KEY, Authorization: "Bearer " + (await cloudToken()) };
   return fetch(CLOUD + path, { ...options, headers });
@@ -362,14 +302,10 @@ function showAuthScreen(mode = "login", message = "") {
           return;
         }
         const session = result.session;
-        if (!session?.access_token || !session?.refresh_token)
+        if (!session?.access_token)
           throw Error("Conta criada. Entre com seu e-mail e senha para continuar.");
-        cloudSession = {
-          at: session.access_token,
-          rt: session.refresh_token,
-          exp: Date.now() + (session.expires_in - 60) * 1000,
-        };
-        localStorage.setItem("cdm-sessao", JSON.stringify(cloudSession));
+        cloudSession = { at: session.access_token, exp: Date.now() + (session.expires_in - 60) * 1000 };
+        localStorage.removeItem("cdm-sessao");
         await startAuthenticatedApp();
         return;
       }
@@ -430,18 +366,33 @@ function startOfflineSession() {
 }
 async function initializeApplication() {
   lockApplication();
+  let legacy = null;
   try {
-    cloudSession = JSON.parse(localStorage.getItem("cdm-sessao") || "null");
-    if (!cloudSession) {
-      let key = Object.keys(localStorage).find((k) => /^sb-.*-auth-token$/.test(k));
-      let session = key ? JSON.parse(localStorage.getItem(key) || "null") : null;
-      if (session?.access_token)
-        cloudSession = { at: session.access_token, rt: session.refresh_token, exp: session.expires_at * 1000 - 60000 };
+    legacy = JSON.parse(localStorage.getItem("cdm-sessao") || "null");
+    if (!legacy) {
+      const key = Object.keys(localStorage).find((item) => /^sb-.*-auth-token$/.test(item));
+      if (key) legacy = JSON.parse(localStorage.getItem(key) || "null");
     }
-    if (!cloudSession) return showAuthScreen();
+  } catch {}
+  if (legacy?.at && legacy?.rt) legacy = { access_token: legacy.at, refresh_token: legacy.rt, expires_at: Math.floor(Number(legacy.exp) / 1000) };
+  localStorage.removeItem("cdm-sessao");
+  for (const key of Object.keys(localStorage)) if (/^sb-.*-auth-token$/.test(key)) localStorage.removeItem(key);
+  try {
+    if (legacy?.access_token && legacy?.refresh_token) {
+      cloudSession = { at: legacy.access_token, exp: Date.now() + Math.max(0, (Number(legacy.expires_at) * 1000 || Date.now()) - Date.now() - 60000) };
+      await refreshCloudSession(legacy.refresh_token);
+    } else {
+      cloudSession = null;
+      await refreshCloudSession();
+    }
     await startAuthenticatedApp();
   } catch (error) {
-    if (startOfflineSession()) return;
+    if (legacy?.access_token && legacy?.expires_at * 1000 > Date.now()) {
+      cloudSession = { at: legacy.access_token, exp: legacy.expires_at * 1000 - 60000 };
+      if (startOfflineSession()) return;
+    }
+    cloudSession = null;
+    if (error.message === "suspenso") await fetch("/api/public/logout", { method: "POST", credentials: "same-origin" }).catch(() => {});
     showAuthScreen(error.message === "suspenso" ? "suspended" : "login", error.message);
   }
 }
@@ -472,7 +423,7 @@ async function startAuthenticatedApp() {
   window.doLogout = async () => {
     document.querySelector("#profileMenu").hidden = true;
     await backendWrites;
-    await cloudFetch("/auth/v1/logout", { method: "POST" }).catch(() => {});
+    await fetch("/api/public/logout", { method: "POST", credentials: "same-origin", headers: { Authorization: "Bearer " + (cloudSession?.at || "") } }).catch(() => {});
     cloudSession = null;
     authUser = null;
     db = emptyState();

@@ -15,9 +15,11 @@ import { Route as ApiPublicAiUsageRouteImport } from './routes/api/public/ai-usa
 import { Route as ApiPublicDollarRateRouteImport } from './routes/api/public/dollar-rate'
 import { Route as ApiPublicFeatureAccessRouteImport } from './routes/api/public/feature-access'
 import { Route as ApiPublicGoogleCalendarConfigRouteImport } from './routes/api/public/google-calendar-config'
+import { Route as ApiPublicLogoutRouteImport } from './routes/api/public/logout'
 import { Route as ApiPublicPlannedPurchaseRouteImport } from './routes/api/public/planned-purchase'
 import { Route as ApiPublicPluggyRouteImport } from './routes/api/public/pluggy'
 import { Route as ApiPublicRegisterRouteImport } from './routes/api/public/register'
+import { Route as ApiPublicSessionRouteImport } from './routes/api/public/session'
 import { Route as ApiPublicTutorialRouteImport } from './routes/api/public/tutorial'
 
 const IndexRoute = IndexRouteImport.update({
@@ -51,6 +53,11 @@ const ApiPublicGoogleCalendarConfigRoute =
     path: '/api/public/google-calendar-config',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPublicLogoutRoute = ApiPublicLogoutRouteImport.update({
+  id: '/api/public/logout',
+  path: '/api/public/logout',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPublicPlannedPurchaseRoute =
   ApiPublicPlannedPurchaseRouteImport.update({
     id: '/api/public/planned-purchase',
@@ -67,6 +74,11 @@ const ApiPublicRegisterRoute = ApiPublicRegisterRouteImport.update({
   path: '/api/public/register',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicSessionRoute = ApiPublicSessionRouteImport.update({
+  id: '/api/public/session',
+  path: '/api/public/session',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPublicTutorialRoute = ApiPublicTutorialRouteImport.update({
   id: '/api/public/tutorial',
   path: '/api/public/tutorial',
@@ -80,9 +92,11 @@ export interface FileRoutesByFullPath {
   '/api/public/dollar-rate': typeof ApiPublicDollarRateRoute
   '/api/public/feature-access': typeof ApiPublicFeatureAccessRoute
   '/api/public/google-calendar-config': typeof ApiPublicGoogleCalendarConfigRoute
+  '/api/public/logout': typeof ApiPublicLogoutRoute
   '/api/public/planned-purchase': typeof ApiPublicPlannedPurchaseRoute
   '/api/public/pluggy': typeof ApiPublicPluggyRoute
   '/api/public/register': typeof ApiPublicRegisterRoute
+  '/api/public/session': typeof ApiPublicSessionRoute
   '/api/public/tutorial': typeof ApiPublicTutorialRoute
 }
 export interface FileRoutesByTo {
@@ -92,9 +106,11 @@ export interface FileRoutesByTo {
   '/api/public/dollar-rate': typeof ApiPublicDollarRateRoute
   '/api/public/feature-access': typeof ApiPublicFeatureAccessRoute
   '/api/public/google-calendar-config': typeof ApiPublicGoogleCalendarConfigRoute
+  '/api/public/logout': typeof ApiPublicLogoutRoute
   '/api/public/planned-purchase': typeof ApiPublicPlannedPurchaseRoute
   '/api/public/pluggy': typeof ApiPublicPluggyRoute
   '/api/public/register': typeof ApiPublicRegisterRoute
+  '/api/public/session': typeof ApiPublicSessionRoute
   '/api/public/tutorial': typeof ApiPublicTutorialRoute
 }
 export interface FileRoutesById {
@@ -105,9 +121,11 @@ export interface FileRoutesById {
   '/api/public/dollar-rate': typeof ApiPublicDollarRateRoute
   '/api/public/feature-access': typeof ApiPublicFeatureAccessRoute
   '/api/public/google-calendar-config': typeof ApiPublicGoogleCalendarConfigRoute
+  '/api/public/logout': typeof ApiPublicLogoutRoute
   '/api/public/planned-purchase': typeof ApiPublicPlannedPurchaseRoute
   '/api/public/pluggy': typeof ApiPublicPluggyRoute
   '/api/public/register': typeof ApiPublicRegisterRoute
+  '/api/public/session': typeof ApiPublicSessionRoute
   '/api/public/tutorial': typeof ApiPublicTutorialRoute
 }
 export interface FileRouteTypes {
@@ -119,9 +137,11 @@ export interface FileRouteTypes {
     | '/api/public/dollar-rate'
     | '/api/public/feature-access'
     | '/api/public/google-calendar-config'
+    | '/api/public/logout'
     | '/api/public/planned-purchase'
     | '/api/public/pluggy'
     | '/api/public/register'
+    | '/api/public/session'
     | '/api/public/tutorial'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -131,9 +151,11 @@ export interface FileRouteTypes {
     | '/api/public/dollar-rate'
     | '/api/public/feature-access'
     | '/api/public/google-calendar-config'
+    | '/api/public/logout'
     | '/api/public/planned-purchase'
     | '/api/public/pluggy'
     | '/api/public/register'
+    | '/api/public/session'
     | '/api/public/tutorial'
   id:
     | '__root__'
@@ -143,9 +165,11 @@ export interface FileRouteTypes {
     | '/api/public/dollar-rate'
     | '/api/public/feature-access'
     | '/api/public/google-calendar-config'
+    | '/api/public/logout'
     | '/api/public/planned-purchase'
     | '/api/public/pluggy'
     | '/api/public/register'
+    | '/api/public/session'
     | '/api/public/tutorial'
   fileRoutesById: FileRoutesById
 }
@@ -156,9 +180,11 @@ export interface RootRouteChildren {
   ApiPublicDollarRateRoute: typeof ApiPublicDollarRateRoute
   ApiPublicFeatureAccessRoute: typeof ApiPublicFeatureAccessRoute
   ApiPublicGoogleCalendarConfigRoute: typeof ApiPublicGoogleCalendarConfigRoute
+  ApiPublicLogoutRoute: typeof ApiPublicLogoutRoute
   ApiPublicPlannedPurchaseRoute: typeof ApiPublicPlannedPurchaseRoute
   ApiPublicPluggyRoute: typeof ApiPublicPluggyRoute
   ApiPublicRegisterRoute: typeof ApiPublicRegisterRoute
+  ApiPublicSessionRoute: typeof ApiPublicSessionRoute
   ApiPublicTutorialRoute: typeof ApiPublicTutorialRoute
 }
 
@@ -206,6 +232,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicGoogleCalendarConfigRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/logout': {
+      id: '/api/public/logout'
+      path: '/api/public/logout'
+      fullPath: '/api/public/logout'
+      preLoaderRoute: typeof ApiPublicLogoutRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/planned-purchase': {
       id: '/api/public/planned-purchase'
       path: '/api/public/planned-purchase'
@@ -227,6 +260,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicRegisterRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/session': {
+      id: '/api/public/session'
+      path: '/api/public/session'
+      fullPath: '/api/public/session'
+      preLoaderRoute: typeof ApiPublicSessionRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/tutorial': {
       id: '/api/public/tutorial'
       path: '/api/public/tutorial'
@@ -244,9 +284,11 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicDollarRateRoute: ApiPublicDollarRateRoute,
   ApiPublicFeatureAccessRoute: ApiPublicFeatureAccessRoute,
   ApiPublicGoogleCalendarConfigRoute: ApiPublicGoogleCalendarConfigRoute,
+  ApiPublicLogoutRoute: ApiPublicLogoutRoute,
   ApiPublicPlannedPurchaseRoute: ApiPublicPlannedPurchaseRoute,
   ApiPublicPluggyRoute: ApiPublicPluggyRoute,
   ApiPublicRegisterRoute: ApiPublicRegisterRoute,
+  ApiPublicSessionRoute: ApiPublicSessionRoute,
   ApiPublicTutorialRoute: ApiPublicTutorialRoute,
 }
 export const routeTree = rootRouteImport
