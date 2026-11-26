@@ -90,7 +90,7 @@ export default {
       return await applySecurityHeaders(request, await normalizeCatastrophicSsrResponse(response));
     } catch (error) {
       console.error(error);
-      return await applySecurityHeaders(request, new Response(renderErrorPage().replace('<button class="primary" onclick="location.reload()">Try again</button>', '<a class="primary" href="">Try again</a>'), {
+      return await applySecurityHeaders(request, new Response(renderErrorPage(), {
         status: 500,
         headers: { "content-type": "text/html; charset=utf-8" },
       }));
