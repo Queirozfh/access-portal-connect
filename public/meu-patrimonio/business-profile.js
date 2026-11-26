@@ -84,8 +84,17 @@ const BUSINESS_WORDS=[
 ];
 function applyBusinessVocabulary(root) {
   if(!root)return;
+  const words=isBusinessProfile()?BUSINESS_WORDS:[...BUSINESS_WORDS].reverse().map(([from,to])=>[to,from]);
+  const translate=value=>{for(const [from,to] of words)value=value.replaceAll(from,to);return value};
+  if(root.id==='nav'){
+    root.querySelectorAll('[data-page]').forEach(button=>{const node=[...button.childNodes].find(child=>child.nodeType===Node.TEXT_NODE);if(!node)return;const current=node.nodeValue.trim();if(button.dataset.lastBusinessLabel!==current)button.dataset.pfLabel=current;const label=translate(button.dataset.pfLabel||current);node.nodeValue=` ${label}`;button.dataset.lastBusinessLabel=label});
+    return;
+  }
+  if(root.id==='pageTitle'){
+    const current=root.textContent.trim();if(root.dataset.lastBusinessTitle!==current)root.dataset.pfTitle=current;const title=translate(root.dataset.pfTitle||current);root.textContent=title;root.dataset.lastBusinessTitle=title;return;
+  }
   const walker=document.createTreeWalker(root,NodeFilter.SHOW_TEXT);
-  while(walker.nextNode()){let node=walker.currentNode,value=node.nodeValue;const words=isBusinessProfile()?BUSINESS_WORDS:[...BUSINESS_WORDS].reverse().map(([from,to])=>[to,from]);for(const [from,to] of words)value=value.replaceAll(from,to);node.nodeValue=value}
+  while(walker.nextNode())walker.currentNode.nodeValue=translate(walker.currentNode.nodeValue);
 }
 function applyBusinessSettingsMode(){if(!isBusinessProfile())return;for(const id of ['compensationMode','netMonthlyIncome','netHourlyValue','workHoursPerMonth']){const field=document.querySelector('#'+id)?.closest('.field');if(field)field.hidden=true}document.querySelectorAll('.bill-toggle').forEach(node=>node.hidden=true);const columns=document.querySelector('.finance-settings-columns');if(columns){if(columns.children[0])columns.children[0].hidden=true;if(columns.children[1])columns.children[1].hidden=true}const heading=[...document.querySelectorAll('#content h2')].find(node=>node.textContent==='Planejamento e critérios financeiros');if(heading)heading.textContent='Critérios operacionais da empresa'}
 function ensureFinanceProfileToggle() {
