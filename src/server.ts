@@ -7,14 +7,18 @@ type ServerEntry = {
   fetch: (request: Request, env: unknown, ctx: unknown) => Promise<Response> | Response;
 };
 
-function applySecurityHeaders(request: Request, response: Response): Response {
+async function applySecurityHeaders(request: Request, response: Response): Promise<Response> {
   const headers = new Headers(response.headers);
   const path = new URL(request.url).pathname;
+  const usesStaticScriptPolicy = path.startsWith('/meu-patrimonio/') || path === '/contas-do-mes.html';
+  const scriptNonce = usesStaticScriptPolicy
+    ? ''
+    : Array.from(crypto.getRandomValues(new Uint8Array(16)), (byte) => byte.toString(16).padStart(2, '0')).join('');
   const scripts = path.startsWith('/meu-patrimonio/')
     ? "script-src 'self' 'sha256-wiHcl0QZqiMWljxEM4RZGm3Ncs3pwmpvf3SG2j3d5VM=' https://accounts.google.com"
     : path === '/contas-do-mes.html'
       ? "script-src 'self' 'sha256-cYtZkDiHeMZrCDHWcd/Q5GMYlx7TF54aO92x9JUVkqc=' 'sha256-G5p1MZ2aCShTBvB8NYVR6nqvRSDU8zlrEDbXzbal/VI=' https://accounts.google.com"
-      : "script-src 'self' 'unsafe-inline' https://accounts.google.com";
+      : `script-src 'self' 'nonce-${scriptNonce}' https://accounts.google.com`;
   headers.set('Content-Security-Policy', [
     "default-src 'self'", "base-uri 'self'", "object-src 'none'", "frame-ancestors 'none'",
     "form-action 'self' https://accounts.google.com", scripts,
@@ -31,7 +35,14 @@ function applySecurityHeaders(request: Request, response: Response): Response {
   headers.set('Cross-Origin-Opener-Policy', 'same-origin-allow-popups');
   if (new URL(request.url).protocol === 'https:') headers.set('Strict-Transport-Security', 'max-age=31536000');
   if (path.startsWith('/api/')) { headers.set('Cache-Control', 'no-store, max-age=0'); headers.set('Pragma', 'no-cache'); }
-  return new Response(response.body, { status: response.status, statusText: response.statusText, headers });
+  let body = response.body;
+  if (scriptNonce && headers.get('content-type')?.includes('text/html')) {
+    const html = await response.text();
+    body = html.replace(/<script\b(?![^>]*\bnonce=)/gi, `<script nonce="${scriptNonce}"`);
+    headers.delete('content-length');
+    headers.delete('content-encoding');
+  }
+  return new Response(body, { status: response.status, statusText: response.statusText, headers });
 }
 
 let serverEntryPromise: Promise<ServerEntry> | undefined;
@@ -76,10 +87,10 @@ export default {
     try {
       const handler = await getServerEntry();
       const response = await handler.fetch(request, env, ctx);
-      return applySecurityHeaders(request, await normalizeCatastrophicSsrResponse(response));
+      return await applySecurityHeaders(request, await normalizeCatastrophicSsrResponse(response));
     } catch (error) {
       console.error(error);
-      return applySecurityHeaders(request, new Response(renderErrorPage(), {
+      return await applySecurityHeaders(request, new Response(renderErrorPage().replace('<button class="primary" onclick="location.reload()">Try again</button>', '<a class="primary" href="">Try again</a>'), {
         status: 500,
         headers: { "content-type": "text/html; charset=utf-8" },
       }));
