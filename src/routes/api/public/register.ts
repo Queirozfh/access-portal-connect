@@ -9,6 +9,19 @@ async function hashClientIp(ip: string) {
   const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(ip));
   return Array.from(new Uint8Array(digest), byte => byte.toString(16).padStart(2, "0")).join("");
 }
+const localAuthAttempts = new Map<string, { startedAt: number; count: number }>();
+function reserveLocalAuthAttempt(kind: "login" | "signup", ipHash: string) {
+  const key = `${kind}:${ipHash}`;
+  const now = Date.now();
+  let entry = localAuthAttempts.get(key);
+  if (!entry || entry.startedAt <= now - 15 * 60 * 1000) entry = { startedAt: now, count: 0 };
+  entry.count += 1;
+  localAuthAttempts.set(key, entry);
+  return entry.count <= 5;
+}
+function resetLocalAuthAttempts(kind: "login" | "signup", ipHash: string) {
+  localAuthAttempts.delete(`${kind}:${ipHash}`);
+}
 function signupErrorMessage(error: { code?: string; message?: string; status?: number }): string {
   const code = String(error.code || "").toLowerCase(),
     message = String(error.message || "").toLowerCase();
@@ -72,13 +85,20 @@ export const Route = createFileRoute("/api/public/register")({
           );
         const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
         const ipHash = await hashClientIp(ip);
-        const { data: attemptAllowed, error: attemptError } = await supabaseAdmin.rpc("consume_auth_attempt", {
+        const { data: persistentAttemptAllowed, error: attemptError } = await supabaseAdmin.rpc("consume_auth_attempt", {
           p_kind: isLogin ? "login" : "signup",
           p_ip_hash: ipHash,
         });
+        let attemptAllowed = persistentAttemptAllowed;
         if (attemptError) {
-          console.error("[auth-rate-limit] Could not reserve an attempt", { code: attemptError.code || "unknown" });
-          return json({ error: "Login e cadastro estão temporariamente indisponíveis." }, 503);
+          const code = String(attemptError.code || "unknown");
+          if (code === "PGRST202" || code === "42883") {
+            console.warn("[auth-rate-limit] Persistent limiter migration is missing; using process-local fallback", { code });
+            attemptAllowed = reserveLocalAuthAttempt(isLogin ? "login" : "signup", ipHash);
+          } else {
+            console.error("[auth-rate-limit] Could not reserve an attempt", { code });
+            return json({ error: "Login e cadastro estão temporariamente indisponíveis." }, 503);
+          }
         }
         if (!attemptAllowed)
           return json(
@@ -111,6 +131,7 @@ export const Route = createFileRoute("/api/public/register")({
           }
           if (!data.session)
             return json({ error: "Não foi possível iniciar a sessão. Confirme seu e-mail e tente novamente." }, 401);
+          resetLocalAuthAttempts("login", ipHash);
           await supabaseAdmin.rpc("reset_auth_attempt", { p_kind: "login", p_ip_hash: ipHash });
           return json({ ok: true, session: publicSession(data.session) }, 200, { "Set-Cookie": refreshCookie(data.session.refresh_token) });
         }
@@ -125,6 +146,7 @@ export const Route = createFileRoute("/api/public/register")({
         const user = data.user;
         if (!user) return json({ error: "Não foi possível concluir o cadastro. Tente novamente." }, 400);
         if (Array.isArray(user.identities) && user.identities.length === 0) {
+          resetLocalAuthAttempts("signup", ipHash);
           await supabaseAdmin.rpc("reset_auth_attempt", { p_kind: "signup", p_ip_hash: ipHash });
           return json({ ok: true, confirmationRequired: true });
         }
@@ -158,6 +180,7 @@ export const Route = createFileRoute("/api/public/register")({
           await supabaseAdmin.from("app_state").delete().eq("id", user.id);
           return json({ error: "Não foi possível preparar a conta. Tente novamente mais tarde." }, 503);
         }
+        resetLocalAuthAttempts("signup", ipHash);
         await supabaseAdmin.rpc("reset_auth_attempt", { p_kind: "signup", p_ip_hash: ipHash });
         return json({ ok: true, confirmationRequired: !data.session, session: data.session ? publicSession(data.session) : null }, 200, data.session ? { "Set-Cookie": refreshCookie(data.session.refresh_token) } : undefined);
       },
