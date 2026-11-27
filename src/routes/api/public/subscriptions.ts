@@ -265,6 +265,86 @@ export const Route = createFileRoute("/api/public/subscriptions")({
                 updatedIds.add(row.id);
               }
             }
+            const annualPlans = [
+              { monthlyName: "Essencial", name: "Essencial Anual", slug: "essencial-anual", accessLevel: 2, priceCents: 19990, description: "Plano anual com acesso aos recursos do nível 2." },
+              { monthlyName: "Intermediário", name: "Intermediário Anual", slug: "intermediario-anual", accessLevel: 3, priceCents: 29990, description: "Plano anual com acesso aos recursos do nível 3." },
+              { monthlyName: "Avançado", name: "Avançado Anual", slug: "avancado-anual", accessLevel: 4, priceCents: 36990, description: "Plano anual com acesso aos recursos do nível 4." },
+              { monthlyName: "Completo e PJ", name: "Completo e PJ Anual", slug: "completo-pj-anual", accessLevel: 5, priceCents: 39990, description: "Plano anual com acesso completo ao nível 5 e à Conta PJ." },
+            ];
+            for (const annualPlan of annualPlans) {
+              const { data: monthlyPlan, error: monthlyError } = await supabaseAdmin
+                .from("subscription_plans")
+                .select("id, is_active")
+                .eq("name", annualPlan.monthlyName)
+                .eq("duration_days", 30)
+                .eq("is_free", false)
+                .maybeSingle();
+              if (monthlyError || !monthlyPlan) {
+                console.error("[subscriptions] Could not find monthly plan for annual offer", {
+                  plan: annualPlan.monthlyName,
+                  code: monthlyError?.code || "not_found",
+                });
+                return json({ error: "Não foi possível preparar as opções anuais. Confira os planos mensais no Admin." }, 500);
+              }
+
+              const { data: existingAnnual, error: annualReadError } = await supabaseAdmin
+                .from("subscription_plans")
+                .select("id, name, access_level, price_cents, duration_days, description, is_free")
+                .eq("slug", annualPlan.slug)
+                .maybeSingle();
+              if (annualReadError) {
+                console.error("[subscriptions] Could not read annual offer", { code: annualReadError.code || "unknown" });
+                return json({ error: "Não foi possível consultar as opções anuais." }, 500);
+              }
+              if (!existingAnnual) {
+                const { data: createdAnnual, error: createAnnualError } = await supabaseAdmin
+                  .from("subscription_plans")
+                  .insert({
+                    slug: annualPlan.slug,
+                    name: annualPlan.name,
+                    description: annualPlan.description,
+                    price_cents: annualPlan.priceCents,
+                    duration_days: 365,
+                    access_level: annualPlan.accessLevel,
+                    is_free: false,
+                    is_active: monthlyPlan.is_active,
+                  })
+                  .select("id")
+                  .single();
+                if (createAnnualError || !createdAnnual) {
+                  console.error("[subscriptions] Could not create annual offer", { code: createAnnualError?.code || "unknown" });
+                  return json({ error: "Não foi possível criar as opções anuais." }, 500);
+                }
+                updatedIds.add(createdAnnual.id);
+                continue;
+              }
+
+              const annualNeedsUpdate =
+                existingAnnual.name !== annualPlan.name ||
+                existingAnnual.access_level !== annualPlan.accessLevel ||
+                existingAnnual.price_cents !== annualPlan.priceCents ||
+                existingAnnual.duration_days !== 365 ||
+                existingAnnual.description !== annualPlan.description ||
+                existingAnnual.is_free;
+              if (!annualNeedsUpdate) continue;
+              const { error: updateAnnualError } = await supabaseAdmin
+                .from("subscription_plans")
+                .update({
+                  name: annualPlan.name,
+                  access_level: annualPlan.accessLevel,
+                  price_cents: annualPlan.priceCents,
+                  duration_days: 365,
+                  description: annualPlan.description,
+                  is_free: false,
+                  updated_at: now,
+                })
+                .eq("id", existingAnnual.id);
+              if (updateAnnualError) {
+                console.error("[subscriptions] Could not update annual offer", { code: updateAnnualError.code || "unknown" });
+                return json({ error: "Não foi possível atualizar as opções anuais." }, 500);
+              }
+              updatedIds.add(existingAnnual.id);
+            }
             return json({ ok: true, updated: updatedIds.size });
           }
           if (body.action === "save-plan") {
