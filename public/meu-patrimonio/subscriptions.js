@@ -225,7 +225,7 @@ function renderAdminPlanList(plans) {
     <div class="admin-plan-row-head"><div><span class="plan-level-pill">Nível ${plan.access_level}</span>${plan.is_free ? '<span class="plan-free-pill">Teste inicial</span>' : ""}<h3>${esc(plan.name)}</h3></div><span class="admin-plan-state ${plan.is_active ? "enabled" : "disabled"}">${plan.is_active ? "Ativo" : "Oculto"}</span></div>
     <p>${esc(plan.description || "Sem descrição")}</p><div class="admin-plan-facts"><strong>${plan.is_free ? "Gratuito" : esc(subscriptionMoney(plan.price_cents))}</strong><span>${plan.duration_days} dias</span><span>${plan.features?.length || 0} funções liberadas</span></div>
     <details class="plan-features"><summary>Ver funções do nível ${plan.access_level}</summary>${planFeatureMarkup(plan.features)}</details>
-    <div class="admin-plan-actions"><button type="button" class="btn secondary" data-plan-edit="${esc(plan.id)}">Editar</button><button type="button" class="btn secondary" data-plan-duplicate="${esc(plan.id)}">Duplicar</button>${plan.is_free ? "" : `<button type="button" class="btn secondary" data-plan-archive="${esc(plan.id)}">${plan.is_active ? "Ocultar" : "Reexibir"}</button>`}</div>
+    <div class="admin-plan-actions"><button type="button" class="btn secondary" data-plan-edit="${esc(plan.id)}">Editar</button>${plan.is_free ? '<button type="button" class="btn secondary" disabled title="O plano gratuito é único e necessário para novos cadastros.">Plano único</button>' : `<button type="button" class="btn secondary" data-plan-duplicate="${esc(plan.id)}">Duplicar</button>`}${plan.is_free ? "" : `<button type="button" class="btn secondary" data-plan-archive="${esc(plan.id)}">${plan.is_active ? "Ocultar" : "Reexibir"}</button>`}</div>
   </article>`).join("");
 }
 
@@ -242,6 +242,42 @@ async function loadAdminPlans() {
   }
 }
 
+async function duplicateAdminPlan(plan, button) {
+  if (!plan || plan.is_free) return;
+  button.disabled = true;
+  const name = `Cópia de ${plan.name}`.slice(0, 80);
+  try {
+    const result = await subscriptionsCall("POST", {
+      action: "save-plan",
+      name,
+      description: plan.description || "",
+      price_cents: Number(plan.price_cents),
+      duration_days: Number(plan.duration_days),
+      access_level: Number(plan.access_level),
+      is_active: false,
+    });
+    if (!result.id) throw Error("A cópia foi enviada, mas o servidor não confirmou o registro. Atualize a lista para conferir.");
+    const copy = {
+      ...plan,
+      id: result.id,
+      name,
+      is_free: false,
+      is_active: false,
+    };
+    adminPlanCache = [copy, ...adminPlanCache.filter((entry) => entry.id !== copy.id)];
+    openAdminPlanForm(copy);
+    const status = document.querySelector("#adminPlanStatus");
+    status.textContent = "Cópia salva e oculta. Revise os dados e marque “Exibir para novos usuários” quando estiver pronta.";
+    status.classList.remove("is-error");
+    toast("Cópia salva como oculta");
+    await loadAdminPlans();
+  } catch (error) {
+    toast(error.message);
+  } finally {
+    if (button.isConnected) button.disabled = false;
+  }
+}
+
 function fillPlanFeaturePreview(level, plan = null) {
   const root = document.querySelector("[data-plan-feature-preview]");
   if (!root) return;
@@ -253,42 +289,31 @@ function fillPlanFeaturePreview(level, plan = null) {
     : `<p>As funções detalhadas deste nível aparecerão depois de carregar o catálogo.</p>`;
 }
 
-function openAdminPlanForm(plan = null, options = {}) {
+function openAdminPlanForm(plan = null) {
   const form = document.querySelector("#adminPlanForm");
   if (!form) return;
-  const duplicate = Boolean(plan && options.duplicate);
   form.hidden = false;
   form.reset();
-  form.elements.id.value = duplicate ? "" : plan?.id || "";
-  form.elements.is_free.value = String(duplicate ? false : Boolean(plan?.is_free));
-  form.elements.name.value = duplicate
-    ? `Cópia de ${plan.name}`.slice(0, 80)
-    : plan?.name || "";
-  form.elements.price.value = duplicate && plan?.is_free
-    ? ""
-    : plan?.is_free
-      ? "0.00"
-      : plan
-        ? (plan.price_cents / 100).toFixed(2)
-        : "";
+  form.elements.id.value = plan?.id || "";
+  form.elements.is_free.value = String(Boolean(plan?.is_free));
+  form.elements.name.value = plan?.name || "";
+  form.elements.price.value = plan?.is_free
+    ? "0.00"
+    : plan
+      ? (plan.price_cents / 100).toFixed(2)
+      : "";
   form.elements.duration_days.value = String(plan?.duration_days || 30);
   form.elements.access_level.value = String(plan?.access_level || 1);
   form.elements.description.value = plan?.description || "";
   form.elements.is_active.checked = Boolean(plan?.is_active ?? true);
-  form.elements.price.disabled = Boolean(plan?.is_free && !duplicate);
-  form.elements.is_active.disabled = Boolean(plan?.is_free && !duplicate);
-  document.querySelector("#adminPlanFormTitle").textContent = duplicate
-    ? `Duplicar ${plan.name}`
-    : plan
-      ? `Editar ${plan.name}`
-      : "Novo plano pago";
-  document.querySelector("#adminPlanStatus").textContent = duplicate
-    ? plan.is_free
-      ? "A cópia é um novo plano pago. Informe o preço e revise os dados antes de salvar."
-      : "A cópia é independente do original. Revise os dados e salve para criá-la."
-    : plan?.is_free
-      ? "O Free mantém preço zero e permanece disponível para novos cadastros."
-      : "O preço informado será cobrado por todo o prazo definido.";
+  form.elements.price.disabled = Boolean(plan?.is_free);
+  form.elements.is_active.disabled = Boolean(plan?.is_free);
+  document.querySelector("#adminPlanFormTitle").textContent = plan
+    ? `Editar ${plan.name}`
+    : "Novo plano pago";
+  document.querySelector("#adminPlanStatus").textContent = plan?.is_free
+    ? "O Free mantém preço zero e permanece disponível para novos cadastros."
+    : "O preço informado será cobrado por todo o prazo definido.";
   fillPlanFeaturePreview(plan?.access_level || 1, plan);
   form.scrollIntoView({ behavior: "smooth", block: "start" });
 }
@@ -376,7 +401,7 @@ document.addEventListener("click", async (event) => {
   const duplicate = event.target.closest("[data-plan-duplicate]");
   if (duplicate) {
     const plan = adminPlanCache.find((entry) => entry.id === duplicate.dataset.planDuplicate);
-    if (plan) openAdminPlanForm(plan, { duplicate: true });
+    if (plan) await duplicateAdminPlan(plan, duplicate);
     return;
   }
   const edit = event.target.closest("[data-plan-edit]");
