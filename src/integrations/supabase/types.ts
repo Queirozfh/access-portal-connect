@@ -98,6 +98,7 @@ export type Database = {
           id: string
           is_active: boolean
           is_free: boolean
+          member_limit: number
           name: string
           price_cents: number
           slug: string
@@ -111,6 +112,7 @@ export type Database = {
           id?: string
           is_active?: boolean
           is_free?: boolean
+          member_limit?: number
           name: string
           price_cents?: number
           slug: string
@@ -124,11 +126,48 @@ export type Database = {
           id?: string
           is_active?: boolean
           is_free?: boolean
+          member_limit?: number
           name?: string
           price_cents?: number
           slug?: string
           updated_at?: string
         }
+        Relationships: []
+      }
+      business_workspaces: {
+        Row: { id: string; owner_user_id: string; name: string; created_at: string; updated_at: string }
+        Insert: { id?: string; owner_user_id: string; name: string; created_at?: string; updated_at?: string }
+        Update: { id?: string; owner_user_id?: string; name?: string; created_at?: string; updated_at?: string }
+        Relationships: []
+      }
+      business_workspace_members: {
+        Row: { workspace_id: string; user_id: string; role: string; created_at: string }
+        Insert: { workspace_id: string; user_id: string; role: string; created_at?: string }
+        Update: { workspace_id?: string; user_id?: string; role?: string; created_at?: string }
+        Relationships: []
+      }
+      business_workspace_invitations: {
+        Row: { id: string; workspace_id: string; invited_email: string; role: string; status: string; created_by: string; created_at: string; expires_at: string; responded_at: string | null }
+        Insert: { id?: string; workspace_id: string; invited_email: string; role: string; status?: string; created_by: string; created_at?: string; expires_at: string; responded_at?: string | null }
+        Update: { id?: string; workspace_id?: string; invited_email?: string; role?: string; status?: string; created_by?: string; created_at?: string; expires_at?: string; responded_at?: string | null }
+        Relationships: []
+      }
+      business_workspace_state: {
+        Row: { workspace_id: string; json: string; updated_at: string }
+        Insert: { workspace_id: string; json?: string; updated_at?: string }
+        Update: { workspace_id?: string; json?: string; updated_at?: string }
+        Relationships: []
+      }
+      business_workspace_state_history: {
+        Row: { id: number; workspace_id: string; json: string; saved_at: string; archived_at: string }
+        Insert: { id?: never; workspace_id: string; json: string; saved_at: string; archived_at?: string }
+        Update: { id?: never; workspace_id?: string; json?: string; saved_at?: string; archived_at?: string }
+        Relationships: []
+      }
+      business_workspace_daily_backups: {
+        Row: { workspace_id: string; backup_date: string; created_at: string; json: string }
+        Insert: { workspace_id: string; backup_date: string; created_at?: string; json: string }
+        Update: { workspace_id?: string; backup_date?: string; created_at?: string; json?: string }
         Relationships: []
       }
       user_subscriptions: {
@@ -200,6 +239,10 @@ export type Database = {
         }
         Returns: boolean
       }
+      create_business_workspace: { Args: { p_owner: string; p_name: string; p_member_limit: number; p_initial_state: string }; Returns: string }
+      invite_business_workspace_member: { Args: { p_workspace_id: string; p_actor: string; p_email: string; p_role: string }; Returns: string }
+      accept_business_workspace_invitation: { Args: { p_invitation_id: string; p_user_id: string; p_email: string }; Returns: string }
+      create_daily_business_workspace_backup: { Args: { p_workspace_id: string }; Returns: boolean }
       create_daily_financial_backup_for_account: { Args: { p_account_id: string }; Returns: undefined }
       consume_auth_attempt: { Args: { p_ip_hash: string; p_kind: string }; Returns: boolean }
       list_daily_financial_backups: {

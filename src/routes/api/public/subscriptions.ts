@@ -14,6 +14,7 @@ type PlanRow = {
   price_cents: number;
   duration_days: number;
   access_level: number;
+  member_limit: number;
   is_free: boolean;
   is_active: boolean;
   created_at: string;
@@ -220,16 +221,16 @@ export const Route = createFileRoute("/api/public/subscriptions")({
             }
 
             const standardPlans = [
-              { name: "Free", accessLevel: 1, priceCents: 0, description: "", isFree: true },
-              { name: "Essencial", accessLevel: 2, priceCents: 1990, description: "Acesso aos recursos do nível 2 por 30 dias.", isFree: false },
-              { name: "Intermediário", accessLevel: 3, priceCents: 3290, description: "Acesso aos recursos do nível 3 por 30 dias.", isFree: false },
-              { name: "Avançado", accessLevel: 4, priceCents: 4290, description: "Acesso aos recursos do nível 4 por 30 dias.", isFree: false },
-              { name: "Completo e PJ", accessLevel: 5, priceCents: 4990, description: "Acesso aos recursos do nível 5, incluindo Conta PJ, por 30 dias.", isFree: false },
+              { name: "Free", accessLevel: 1, priceCents: 0, description: "", isFree: true, memberLimit: 1 },
+              { name: "Essencial", accessLevel: 2, priceCents: 1990, description: "Acesso aos recursos do nível 2 por 30 dias.", isFree: false, memberLimit: 1 },
+              { name: "Intermediário", accessLevel: 3, priceCents: 3290, description: "Acesso aos recursos do nível 3 por 30 dias.", isFree: false, memberLimit: 1 },
+              { name: "Avançado", accessLevel: 4, priceCents: 4290, description: "Acesso aos recursos do nível 4 por 30 dias.", isFree: false, memberLimit: 1 },
+              { name: "Completo e PJ", accessLevel: 5, priceCents: 4990, description: "Acesso aos recursos do nível 5, Conta PJ e espaço empresarial compartilhado por 30 dias.", isFree: false, memberLimit: 5 },
             ];
             for (const plan of standardPlans) {
               const { data: rows, error: readError } = await supabaseAdmin
                 .from("subscription_plans")
-                .select("id, access_level, price_cents, duration_days, description, is_free, is_active")
+                .select("id, access_level, price_cents, duration_days, description, is_free, is_active, member_limit")
                 .eq("name", plan.name);
               if (readError) {
                 console.error("[subscriptions] Could not read commercial plan", { code: readError.code || "unknown" });
@@ -237,21 +238,23 @@ export const Route = createFileRoute("/api/public/subscriptions")({
               }
               for (const row of rows || []) {
                 const needsUpdate = plan.isFree
-                  ? row.access_level !== 1 || row.price_cents !== 0 || !row.is_free || !row.is_active
+                  ? row.access_level !== 1 || row.price_cents !== 0 || !row.is_free || !row.is_active || row.member_limit !== 1
                   : row.access_level !== plan.accessLevel ||
                     row.price_cents !== plan.priceCents ||
                     row.duration_days !== 30 ||
                     row.description !== plan.description ||
-                    row.is_free;
+                    row.is_free ||
+                    row.member_limit !== plan.memberLimit;
                 if (!needsUpdate) continue;
                 const planUpdate = plan.isFree
-                  ? { access_level: 1, price_cents: 0, is_free: true, is_active: true, updated_at: now }
+                  ? { access_level: 1, price_cents: 0, is_free: true, is_active: true, member_limit: 1, updated_at: now }
                   : {
                       access_level: plan.accessLevel,
                       price_cents: plan.priceCents,
                       duration_days: 30,
                       description: plan.description,
                       is_free: false,
+                      member_limit: plan.memberLimit,
                       updated_at: now,
                     };
                 const { error: updateError } = await supabaseAdmin
@@ -266,10 +269,10 @@ export const Route = createFileRoute("/api/public/subscriptions")({
               }
             }
             const annualPlans = [
-              { monthlyName: "Essencial", name: "Essencial Anual", slug: "essencial-anual", accessLevel: 2, priceCents: 19990, description: "Plano anual com acesso aos recursos do nível 2." },
-              { monthlyName: "Intermediário", name: "Intermediário Anual", slug: "intermediario-anual", accessLevel: 3, priceCents: 29990, description: "Plano anual com acesso aos recursos do nível 3." },
-              { monthlyName: "Avançado", name: "Avançado Anual", slug: "avancado-anual", accessLevel: 4, priceCents: 36990, description: "Plano anual com acesso aos recursos do nível 4." },
-              { monthlyName: "Completo e PJ", name: "Completo e PJ Anual", slug: "completo-pj-anual", accessLevel: 5, priceCents: 39990, description: "Plano anual com acesso completo ao nível 5 e à Conta PJ." },
+              { monthlyName: "Essencial", name: "Essencial Anual", slug: "essencial-anual", accessLevel: 2, priceCents: 19990, description: "Plano anual com acesso aos recursos do nível 2.", memberLimit: 1 },
+              { monthlyName: "Intermediário", name: "Intermediário Anual", slug: "intermediario-anual", accessLevel: 3, priceCents: 29990, description: "Plano anual com acesso aos recursos do nível 3.", memberLimit: 1 },
+              { monthlyName: "Avançado", name: "Avançado Anual", slug: "avancado-anual", accessLevel: 4, priceCents: 36990, description: "Plano anual com acesso aos recursos do nível 4.", memberLimit: 1 },
+              { monthlyName: "Completo e PJ", name: "Completo e PJ Anual", slug: "completo-pj-anual", accessLevel: 5, priceCents: 39990, description: "Plano anual com acesso completo ao nível 5, Conta PJ e espaço empresarial compartilhado.", memberLimit: 5 },
             ];
             for (const annualPlan of annualPlans) {
               const { data: monthlyPlan, error: monthlyError } = await supabaseAdmin
@@ -289,7 +292,7 @@ export const Route = createFileRoute("/api/public/subscriptions")({
 
               const { data: existingAnnual, error: annualReadError } = await supabaseAdmin
                 .from("subscription_plans")
-                .select("id, name, access_level, price_cents, duration_days, description, is_free")
+                .select("id, name, access_level, price_cents, duration_days, description, is_free, member_limit")
                 .eq("slug", annualPlan.slug)
                 .maybeSingle();
               if (annualReadError) {
@@ -308,6 +311,7 @@ export const Route = createFileRoute("/api/public/subscriptions")({
                     access_level: annualPlan.accessLevel,
                     is_free: false,
                     is_active: monthlyPlan.is_active,
+                    member_limit: annualPlan.memberLimit,
                   })
                   .select("id")
                   .single();
@@ -325,7 +329,8 @@ export const Route = createFileRoute("/api/public/subscriptions")({
                 existingAnnual.price_cents !== annualPlan.priceCents ||
                 existingAnnual.duration_days !== 365 ||
                 existingAnnual.description !== annualPlan.description ||
-                existingAnnual.is_free;
+                existingAnnual.is_free ||
+                existingAnnual.member_limit !== annualPlan.memberLimit;
               if (!annualNeedsUpdate) continue;
               const { error: updateAnnualError } = await supabaseAdmin
                 .from("subscription_plans")
@@ -336,6 +341,7 @@ export const Route = createFileRoute("/api/public/subscriptions")({
                   duration_days: 365,
                   description: annualPlan.description,
                   is_free: false,
+                  member_limit: annualPlan.memberLimit,
                   updated_at: now,
                 })
                 .eq("id", existingAnnual.id);
@@ -354,12 +360,15 @@ export const Route = createFileRoute("/api/public/subscriptions")({
             const priceCents = Number(body.price_cents);
             const durationDays = Number(body.duration_days);
             const accessLevel = Number(body.access_level);
+            const requestedMemberLimit = Number(body['member_limit'] ?? (accessLevel === 5 ? 5 : 1));
+            const memberLimit = accessLevel === 5 ? requestedMemberLimit : 1;
             const isActive = body.is_active !== false;
             if (
               name.length < 1 || name.length > 80 || description.length > 500 ||
               !Number.isInteger(priceCents) || priceCents < 1 || priceCents > 99999999 ||
               !Number.isInteger(durationDays) || durationDays < 1 || durationDays > 3650 ||
-              !Number.isInteger(accessLevel) || accessLevel < 1 || accessLevel > 5
+              !Number.isInteger(accessLevel) || accessLevel < 1 || accessLevel > 5 ||
+              !Number.isInteger(memberLimit) || memberLimit < 1 || memberLimit > 500
             )
               return json({ error: "Revise nome, preço, prazo e nível do plano." }, 400);
             const now = new Date().toISOString();
@@ -379,6 +388,7 @@ export const Route = createFileRoute("/api/public/subscriptions")({
                   price_cents: existing.is_free ? 0 : priceCents,
                   duration_days: durationDays,
                   access_level: accessLevel,
+                  member_limit: existing.is_free ? 1 : memberLimit,
                   is_active: existing.is_free ? true : isActive,
                   updated_at: now,
                 })
@@ -393,6 +403,7 @@ export const Route = createFileRoute("/api/public/subscriptions")({
               price_cents: priceCents,
               duration_days: durationDays,
               access_level: accessLevel,
+              member_limit: memberLimit,
               is_active: isActive,
             }).select("id").single();
             if (error) return json({ error: planWriteErrorMessage(error, "criar") }, 500);

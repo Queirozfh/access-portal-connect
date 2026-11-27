@@ -91,6 +91,13 @@ function subscriptionPlanHighlightFeatures(plan, visiblePlans) {
       category: "Ajustes e conta",
     });
   }
+  if (level === 5 && !features.some((feature) => feature.id === "business.workspace.shared")) {
+    features.push({
+      id: "business.workspace.shared",
+      label: `Espaço empresarial compartilhado para até ${Number(plan.member_limit) || 5} usuários`,
+      category: "Conta empresarial",
+    });
+  }
   return features;
 }
 
@@ -127,6 +134,14 @@ function subscriptionComparisonMarkup(plans) {
     label: "Sistema PJ · ambiente financeiro empresarial separado",
     category: settings,
   });
+  if (visiblePlans.some((plan) => Number(plan.access_level) === 5)) {
+    if (!grouped.has("Conta empresarial")) grouped.set("Conta empresarial", new Map());
+    grouped.get("Conta empresarial").set("business.workspace.shared", {
+      id: "business.workspace.shared",
+      label: "Espaço empresarial compartilhado e equipe",
+      category: "Conta empresarial",
+    });
+  }
   if (!visiblePlans.length) return "";
 
   const headers = visiblePlans.map((plan) => {
@@ -140,19 +155,19 @@ function subscriptionComparisonMarkup(plans) {
   }).join("");
   const rows = [...grouped.entries()].map(([category, features]) =>
     `<tr class="subscription-comparison-category"><th colspan="${visiblePlans.length + 1}" scope="colgroup">${esc(category)}</th></tr>${[...features.entries()].map(([featureId, feature]) => {
-      const availableAt = featureId === "profile.pj"
+      const availableAt = featureId === "profile.pj" || featureId === "business.workspace.shared"
         ? 5
         : Math.min(...visiblePlans
           .filter((plan) => (plan.features || []).some((entry) => (entry.id || entry.label) === featureId))
           .map((plan) => Number(plan.access_level) || 1));
-      const availability = featureId === "profile.pj"
+      const availability = featureId === "profile.pj" || featureId === "business.workspace.shared"
         ? '<small class="subscription-compare-availability is-exclusive">Exclusivo do nível 5</small>'
         : Number.isFinite(availableAt)
           ? `<small class="subscription-compare-availability">Disponível a partir do nível ${availableAt}</small>`
           : "";
       return `<tr class="${featureId === "profile.pj" ? "is-pj-exclusive" : ""}"><th scope="row"><span class="subscription-comparison-feature-label">${esc(feature.label)}</span>${availability}</th>${visiblePlans.map((plan) => {
         const level = Number(plan.access_level) || 1;
-        const included = featureId === "profile.pj"
+        const included = featureId === "profile.pj" || featureId === "business.workspace.shared"
           ? level === 5
           : (plan.features || []).some((entry) => (entry.id || entry.label) === featureId);
         return `<td><span class="subscription-compare-mark ${included ? "included" : "not-included"}" aria-label="${included ? "Incluído" : "Não incluído"}">${included ? "✓" : "—"}</span></td>`;
@@ -350,6 +365,9 @@ function subscriptionPageMarkup(snapshot) {
     const resourceSummary = Number(plan.access_level) === 5
       ? "+ de 100 recursos disponíveis"
       : `${plan.features?.length || 0} recursos disponíveis`;
+    const businessSeats = Number(plan.access_level) === 5
+      ? `<div class="subscription-business-seat-note"><strong>Espaço PJ compartilhado</strong><span>Até ${Number(plan.member_limit) || 5} pessoas na equipe</span></div>`
+      : "";
     const priceMarkup = plan.is_free
       ? '<div class="subscription-price">Gratuito</div>'
       : isAnnualPlan
@@ -362,6 +380,7 @@ function subscriptionPageMarkup(snapshot) {
       ${priceMarkup}
       <p class="subscription-term">${plan.is_free ? `${plan.duration_days} dias de teste gratuito` : isAnnualPlan ? "Acesso por 1 ano (365 dias)" : "Acesso por 30 dias"}</p>
       <div class="subscription-plan-includes"><span class="subscription-plan-includes-icon" aria-hidden="true">✓</span><span><strong>${esc(resourceSummary)}</strong><small>Confira a comparação completa abaixo</small></span></div>
+      ${businessSeats}
       ${subscriptionPlanHighlightsMarkup(plan, plans)}
       <button class="btn ${disabled ? "secondary" : "primary"} subscription-plan-action" data-request-plan="${esc(plan.id)}" ${disabled ? "disabled" : ""}>${action}</button>
     </article>`;
@@ -414,7 +433,7 @@ async function loadSubscriptionPage() {
 }
 
 function adminPlansMarkup() {
-  return `<div class="admin-plan-toolbar"><div><h2>Planos comerciais PF</h2><p>Defina preço por período, duração e nível de funções de cada plano.</p></div><button class="btn primary" data-plan-new>＋ Novo plano pago</button></div>
+  return `<div class="admin-plan-toolbar"><div><h2>Planos comerciais PF e PJ</h2><p>Defina preço, duração, nível de funções e limite da equipe empresarial.</p></div><button class="btn primary" data-plan-new>＋ Novo plano pago</button></div>
     <form id="adminPlanForm" class="admin-plan-form" hidden novalidate>
       <input type="hidden" name="id"><input type="hidden" name="is_free">
       <div class="admin-plan-form-heading"><strong id="adminPlanFormTitle">Novo plano</strong><button type="button" class="mini-btn" data-plan-cancel>Fechar</button></div>
@@ -423,6 +442,7 @@ function adminPlansMarkup() {
         <label class="field"><span>Preço por período (R$)</span><input name="price" type="text" inputmode="decimal" autocomplete="off" placeholder="Ex.: 29,90" required></label>
         <label class="field"><span>Duração (dias)</span><input name="duration_days" type="text" inputmode="numeric" pattern="[0-9]*" autocomplete="off" placeholder="Ex.: 30" required value="30"></label>
         <label class="field"><span>Nível de acesso</span><select name="access_level">${[1, 2, 3, 4, 5].map((level) => `<option value="${level}">Nível ${level} · ${["Básico", "Essencial", "Intermediário", "Avançado", "Completo"][level - 1]}</option>`).join("")}</select></label>
+        <label class="field admin-plan-members"><span>Usuários por espaço empresarial</span><input name="member_limit" type="number" min="1" max="500" step="1" value="1"><small>Aplicável somente aos planos de nível 5, que liberam o ambiente PJ compartilhado.</small></label>
         <label class="field admin-plan-description"><span>Descrição para o usuário</span><textarea name="description" maxlength="500" rows="2" placeholder="Resumo do que este plano oferece"></textarea></label>
         <label class="admin-plan-active"><input type="checkbox" name="is_active" checked> Exibir para novos usuários</label>
       </div>
@@ -465,7 +485,7 @@ function renderAdminPlanList(plans) {
   }
   root.innerHTML = adminPlanCache.map((plan) => `<article class="admin-plan-row">
     <div class="admin-plan-row-head"><div><span class="plan-level-pill">Nível ${plan.access_level}</span>${plan.is_free ? '<span class="plan-free-pill">Teste inicial</span>' : ""}<h3>${esc(plan.name)}</h3></div><span class="admin-plan-state ${plan.is_active ? "enabled" : "disabled"}">${plan.is_active ? "Ativo" : "Oculto"}</span></div>
-    <p>${esc(plan.description || "Sem descrição")}</p><div class="admin-plan-facts"><strong>${plan.is_free ? "Gratuito" : esc(subscriptionMoney(plan.price_cents))}</strong><span>${plan.duration_days} dias</span><span>${plan.features?.length || 0} funções liberadas</span></div>
+    <p>${esc(plan.description || "Sem descrição")}</p><div class="admin-plan-facts"><strong>${plan.is_free ? "Gratuito" : esc(subscriptionMoney(plan.price_cents))}</strong><span>${plan.duration_days} dias</span><span>${plan.features?.length || 0} funções liberadas</span>${Number(plan.access_level) === 5 ? `<span>Até ${Number(plan.member_limit) || 1} usuários por empresa</span>` : ""}</div>
     <details class="plan-features"><summary>Ver funções do nível ${plan.access_level}</summary>${planFeatureMarkup(plan.features)}</details>
     <div class="admin-plan-actions"><button type="button" class="btn secondary" data-plan-edit="${esc(plan.id)}">Editar</button><button type="button" class="btn secondary" data-plan-duplicate="${esc(plan.id)}" title="${plan.is_free ? "Cria uma cópia paga, oculta e com preço inicial de R$ 0,01." : "Cria uma cópia independente, oculta e salva automaticamente."}">Duplicar</button>${plan.is_free ? "" : `<button type="button" class="btn secondary" data-plan-archive="${esc(plan.id)}">${plan.is_active ? "Ocultar" : "Reexibir"}</button>`}</div>
   </article>`).join("");
@@ -501,6 +521,7 @@ async function duplicateAdminPlan(plan, button) {
       price_cents: priceCents,
       duration_days: Number(plan.duration_days),
       access_level: Number(plan.access_level),
+      member_limit: Number(plan.member_limit) || (Number(plan.access_level) === 5 ? 5 : 1),
       is_active: false,
     });
     if (!result.id) throw Error("A cópia foi enviada, mas o servidor não confirmou o registro. Atualize a lista para conferir.");
@@ -554,10 +575,13 @@ function openAdminPlanForm(plan = null) {
       : "";
   form.elements.duration_days.value = String(plan?.duration_days || 30);
   form.elements.access_level.value = String(plan?.access_level || 1);
+  form.elements.member_limit.value = String(plan?.member_limit || (Number(plan?.access_level) === 5 ? 5 : 1));
   form.elements.description.value = plan?.description || "";
   form.elements.is_active.checked = Boolean(plan?.is_active ?? true);
   form.elements.price.disabled = Boolean(plan?.is_free);
   form.elements.is_active.disabled = Boolean(plan?.is_free);
+  form.elements.access_level.disabled = Boolean(plan?.is_free);
+  form.elements.member_limit.disabled = Boolean(plan?.is_free) || Number(form.elements.access_level.value) !== 5;
   document.querySelector("#adminPlanFormTitle").textContent = plan
     ? `Editar ${plan.name}`
     : "Novo plano pago";
@@ -723,7 +747,17 @@ document.addEventListener("change", (event) => {
     return;
   }
   if (event.target?.matches('#adminPlanForm [name="access_level"]'))
-    fillPlanFeaturePreview(Number(event.target.value));
+  {
+    const level = Number(event.target.value);
+    fillPlanFeaturePreview(level);
+    const memberLimit = document.querySelector('#adminPlanForm [name="member_limit"]');
+    const freePlan = document.querySelector('#adminPlanForm [name="is_free"]')?.value === "true";
+    if (memberLimit) {
+      memberLimit.disabled = level !== 5 || freePlan;
+      if (level === 5 && Number(memberLimit.value) < 2) memberLimit.value = "5";
+      if (level !== 5) memberLimit.value = "1";
+    }
+  }
 });
 
 async function saveAdminPlanForm(event) {
@@ -737,6 +771,8 @@ async function saveAdminPlanForm(event) {
   const priceCents = isFree ? 0 : Math.round(price * 100);
   const durationText = String(values.duration_days || "").trim();
   const durationDays = /^\d+$/.test(durationText) ? Number(durationText) : Number.NaN;
+  const accessLevel = isFree ? 1 : Number(values.access_level);
+  const memberLimit = accessLevel === 5 ? Number(values.member_limit) : 1;
   const status = document.querySelector("#adminPlanStatus");
   const validationError = !name
     ? "Informe o nome do plano."
@@ -746,6 +782,8 @@ async function saveAdminPlanForm(event) {
         ? "Informe um preço válido entre R$ 0,01 e R$ 999.999,99. Você pode usar vírgula ou ponto nos centavos."
         : !Number.isInteger(durationDays) || durationDays < 1 || durationDays > 3650
           ? "Informe uma duração inteira entre 1 e 3.650 dias."
+          : !Number.isInteger(memberLimit) || memberLimit < 1 || memberLimit > 500
+            ? "Informe um limite inteiro de 1 a 500 usuários para o plano de nível 5."
           : "";
   if (validationError) {
     status.textContent = validationError;
@@ -764,7 +802,8 @@ async function saveAdminPlanForm(event) {
       description: values.description,
       price_cents: priceCents,
       duration_days: durationDays,
-      access_level: Number(values.access_level),
+      access_level: accessLevel,
+      member_limit: memberLimit,
       is_active: isFree ? true : form.elements.is_active.checked,
     });
     form.hidden = true;
