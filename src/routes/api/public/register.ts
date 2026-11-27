@@ -153,11 +153,19 @@ export const Route = createFileRoute("/api/public/register")({
         try {
           const { data: fresh, error: lookupError } = await supabaseAdmin.auth.admin.getUserById(user.id);
           if (lookupError || !fresh.user) throw new Error("Cadastro indisponível.");
+          const { data: freePlan, error: freePlanError } = await supabaseAdmin
+            .from("subscription_plans")
+            .select("id, duration_days, access_level")
+            .eq("is_free", true)
+            .eq("is_active", true)
+            .maybeSingle();
+          if (freePlanError || !freePlan) throw new Error("Plano Free indisponível.");
           const metadata = (fresh.user.app_metadata || {}) as Record<string, unknown>;
-          const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
-          const [{ error: levelError }, { error: stateError }] = await Promise.all([
+          const startedAt = new Date();
+          const expiresAt = new Date(startedAt.getTime() + freePlan.duration_days * 24 * 60 * 60 * 1000).toISOString();
+          const [{ error: levelError }, { error: stateError }, { error: subscriptionError }] = await Promise.all([
             supabaseAdmin.auth.admin.updateUserById(user.id, {
-              app_metadata: { ...metadata, access_level: 1, expires_at: expiresAt },
+              app_metadata: { ...metadata, access_level: freePlan.access_level, expires_at: expiresAt },
             }),
             supabaseAdmin.from("app_state").upsert({
               id: user.id,
@@ -173,11 +181,19 @@ export const Route = createFileRoute("/api/public/register")({
               }),
               updated_at: new Date().toISOString(),
             }),
+            supabaseAdmin.from("user_subscriptions").insert({
+              user_id: user.id,
+              plan_id: freePlan.id,
+              status: "trialing",
+              started_at: startedAt.toISOString(),
+              expires_at: expiresAt,
+            }),
           ]);
-          if (levelError || stateError) throw new Error("Cadastro indisponível.");
+          if (levelError || stateError || subscriptionError) throw new Error("Cadastro indisponível.");
         } catch {
           await supabaseAdmin.auth.admin.deleteUser(user.id).catch(() => {});
           await supabaseAdmin.from("app_state").delete().eq("id", user.id);
+          await supabaseAdmin.from("user_subscriptions").delete().eq("user_id", user.id);
           return json({ error: "Não foi possível preparar a conta. Tente novamente mais tarde." }, 503);
         }
         resetLocalAuthAttempts("signup", ipHash);

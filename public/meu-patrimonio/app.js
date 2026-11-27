@@ -285,6 +285,7 @@ function setPage(p) {
     tutorial: "Tutorial",
     ajustes: "Ajustes",
     admin: "Admin",
+    plano: "Meu plano",
   }[p];
   document.querySelector(".sidebar").classList.remove("open");
   render();
@@ -350,6 +351,7 @@ function render() {
   if (page === "relatorios") c.innerHTML = reportsPage();
   if (page === "tutorial") c.innerHTML = tutorialPage();
   if (page === "admin") c.innerHTML = adminPage();
+  if (page === "plano") c.innerHTML = "";
   bindPage();
   updateBulkSelectionUi();
   if (page === "ajustes" && hasFeature("account.export")) {

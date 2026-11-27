@@ -104,6 +104,22 @@ export const Route = createFileRoute("/api/public/admin-users")({
             const aiPermissions = new Map((permissions.data || []).map((row) => [row.user_id, row.enabled]));
             const aiUsage = new Map((usage.data || []).map((row) => [row.user_id, row.used]));
             const { data: rows } = await supabaseAdmin.from("app_state").select("id, json, updated_at");
+            const [{ data: subscriptions }, { data: plans }] = await Promise.all([
+              supabaseAdmin
+                .from("user_subscriptions")
+                .select("user_id, plan_id, status, expires_at, access_level_override"),
+              supabaseAdmin.from("subscription_plans").select("id, access_level"),
+            ]);
+            const planLevels = new Map((plans || []).map((plan) => [plan.id, plan.access_level]));
+            const subscribedLevels = new Map<string, number>();
+            for (const subscription of subscriptions || []) {
+              const valid =
+                ["active", "trialing"].includes(subscription.status) &&
+                (!subscription.expires_at || new Date(subscription.expires_at).getTime() > Date.now());
+              const level = subscription.access_level_override ||
+                (subscription.plan_id ? planLevels.get(subscription.plan_id) : null);
+              if (valid && level) subscribedLevels.set(subscription.user_id, level);
+            }
             const names: Record<string, string> = {};
             const stats: Record<string, { total: number; ativos: number; updated_at: string }> = {};
             const now = new Date(),
@@ -162,7 +178,9 @@ export const Route = createFileRoute("/api/public/admin-users")({
                   ),
                   admin: u.id === adminId,
                   access_level:
-                    u.id === adminId ? 5 : Number(metadata?.access_level) || defaultUserAccessLevel(u.created_at),
+                    u.id === adminId
+                      ? 5
+                      : subscribedLevels.get(u.id) || Number(metadata?.access_level) || defaultUserAccessLevel(u.created_at),
                   ai_enabled: aiPermissions.get(u.id) ?? true,
                   ai_used: aiUsage.get(u.id) ?? 0,
                   ai_limit:
@@ -255,6 +273,18 @@ export const Route = createFileRoute("/api/public/admin-users")({
             const { data: target, error: lookupError } = await a.getUserById(id);
             if (lookupError || !target.user) return json({ error: "Acesso não encontrado." }, 404);
             const metadata = (target.user.app_metadata || {}) as Record<string, unknown>;
+            const { data: subscription } = await supabaseAdmin
+              .from("user_subscriptions")
+              .select("user_id")
+              .eq("user_id", id)
+              .maybeSingle();
+            if (subscription) {
+              const { error: subscriptionError } = await supabaseAdmin
+                .from("user_subscriptions")
+                .update({ access_level_override: level, updated_at: new Date().toISOString() })
+                .eq("user_id", id);
+              if (subscriptionError) return json({ error: "Não foi possível atualizar o nível da assinatura." }, 500);
+            }
             const { error } = await a.updateUserById(id, { app_metadata: { ...metadata, access_level: level } });
             if (error) return json({ error: "Não foi possível atribuir o nível." }, 500);
             return json({ ok: true, level });

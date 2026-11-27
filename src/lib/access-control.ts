@@ -90,6 +90,29 @@ export function defaultAccessFeatures(level: number): string[] {
   return ACCESS_FEATURES.filter(feature => feature.minLevel <= safeLevel).map(feature => feature.id);
 }
 
+export async function configuredAccessFeatures(level: number): Promise<string[]> {
+  const safeLevel = Math.max(1, Math.min(5, Math.floor(level || 1)));
+  const { supabaseAdmin } = await import('@/integrations/supabase/client.server');
+  const { data, error } = await supabaseAdmin.auth.admin.getUserById(ACCESS_ADMIN_USER_ID);
+  if (error || !data.user) throw error || new Error('Administrador principal não encontrado.');
+  const metadata = data.user.app_metadata as
+    | { access_policies?: Array<{ level: number; features: string[] }>; access_policy_version?: number }
+    | undefined;
+  const policy = metadata?.access_policies?.find(item => Number(item.level) === safeLevel);
+  const features = new Set(
+    (Array.isArray(policy?.features) ? policy.features : defaultAccessFeatures(safeLevel)).filter(
+      (feature): feature is (typeof ACCESS_FEATURE_IDS)[number] =>
+        typeof feature === 'string' && (ACCESS_FEATURE_IDS as readonly string[]).includes(feature),
+    ),
+  );
+  if ((Number(metadata?.access_policy_version) || 1) < ACCESS_POLICY_VERSION) {
+    features.add('budgets.view');
+    if (safeLevel >= 2) features.add('budgets.manage');
+  }
+  if (safeLevel === 5) for (const feature of ACCESS_FEATURE_IDS) features.add(feature);
+  return ACCESS_FEATURES.filter(feature => features.has(feature.id)).map(feature => feature.id);
+}
+
 export async function accessPolicyForUser(userId: string) {
   const { supabaseAdmin } = await import('@/integrations/supabase/client.server');
   const [{ data: target, error: targetError }, { data: admin, error: adminError }] = await Promise.all([
@@ -99,9 +122,30 @@ export async function accessPolicyForUser(userId: string) {
   if (targetError || !target.user) throw targetError || new Error('Usuário não encontrado.');
   if (adminError || !admin.user) throw adminError || new Error('Administrador principal não encontrado.');
   const metadata = target.user.app_metadata as { access_level?: number } | undefined;
+  let subscribedLevel: number | null = null;
+  const { data: subscription } = await supabaseAdmin
+    .from('user_subscriptions')
+    .select('plan_id, status, expires_at, access_level_override')
+    .eq('user_id', userId)
+    .maybeSingle();
+  if (
+    subscription &&
+    ['active', 'trialing'].includes(subscription.status) &&
+    (!subscription.expires_at || new Date(subscription.expires_at).getTime() > Date.now())
+  ) {
+    if (subscription.access_level_override) subscribedLevel = subscription.access_level_override;
+    else if (subscription.plan_id) {
+      const { data: plan } = await supabaseAdmin
+        .from('subscription_plans')
+        .select('access_level')
+        .eq('id', subscription.plan_id)
+        .maybeSingle();
+      if (plan) subscribedLevel = plan.access_level;
+    }
+  }
   // Accounts predating self-service registration retain their legacy full access.
   const fallbackLevel = defaultUserAccessLevel(target.user.created_at);
-  const level = Math.max(1, Math.min(5, Number(metadata?.access_level) || fallbackLevel));
+  const level = Math.max(1, Math.min(5, subscribedLevel || Number(metadata?.access_level) || fallbackLevel));
   const adminMetadata = admin.user.app_metadata as { access_policies?: Array<{ level: number; features: string[] }>; access_policy_version?: number } | undefined;
   const policy = adminMetadata?.access_policies?.find(item => Number(item.level) === level);
   const features = Array.isArray(policy?.features)

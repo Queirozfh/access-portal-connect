@@ -89,6 +89,87 @@ export type Database = {
         }
         Relationships: []
       }
+      subscription_plans: {
+        Row: {
+          access_level: number
+          created_at: string
+          description: string
+          duration_days: number
+          id: string
+          is_active: boolean
+          is_free: boolean
+          name: string
+          price_cents: number
+          slug: string
+          updated_at: string
+        }
+        Insert: {
+          access_level?: number
+          created_at?: string
+          description?: string
+          duration_days: number
+          id?: string
+          is_active?: boolean
+          is_free?: boolean
+          name: string
+          price_cents?: number
+          slug: string
+          updated_at?: string
+        }
+        Update: {
+          access_level?: number
+          created_at?: string
+          description?: string
+          duration_days?: number
+          id?: string
+          is_active?: boolean
+          is_free?: boolean
+          name?: string
+          price_cents?: number
+          slug?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      user_subscriptions: {
+        Row: {
+          access_level_override: number | null
+          created_at: string
+          expires_at: string | null
+          pending_plan_id: string | null
+          pending_requested_at: string | null
+          plan_id: string | null
+          started_at: string | null
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          access_level_override?: number | null
+          created_at?: string
+          expires_at?: string | null
+          pending_plan_id?: string | null
+          pending_requested_at?: string | null
+          plan_id?: string | null
+          started_at?: string | null
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          access_level_override?: number | null
+          created_at?: string
+          expires_at?: string | null
+          pending_plan_id?: string | null
+          pending_requested_at?: string | null
+          plan_id?: string | null
+          started_at?: string | null
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           id: string

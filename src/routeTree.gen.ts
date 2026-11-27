@@ -20,6 +20,7 @@ import { Route as ApiPublicLogoutRouteImport } from './routes/api/public/logout'
 import { Route as ApiPublicPlannedPurchaseRouteImport } from './routes/api/public/planned-purchase'
 import { Route as ApiPublicRegisterRouteImport } from './routes/api/public/register'
 import { Route as ApiPublicSessionRouteImport } from './routes/api/public/session'
+import { Route as ApiPublicSubscriptionsRouteImport } from './routes/api/public/subscriptions'
 import { Route as ApiPublicTutorialRouteImport } from './routes/api/public/tutorial'
 
 const IndexRoute = IndexRouteImport.update({
@@ -79,6 +80,11 @@ const ApiPublicSessionRoute = ApiPublicSessionRouteImport.update({
   path: '/api/public/session',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicSubscriptionsRoute = ApiPublicSubscriptionsRouteImport.update({
+  id: '/api/public/subscriptions',
+  path: '/api/public/subscriptions',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPublicTutorialRoute = ApiPublicTutorialRouteImport.update({
   id: '/api/public/tutorial',
   path: '/api/public/tutorial',
@@ -97,6 +103,7 @@ export interface FileRoutesByFullPath {
   '/api/public/planned-purchase': typeof ApiPublicPlannedPurchaseRoute
   '/api/public/register': typeof ApiPublicRegisterRoute
   '/api/public/session': typeof ApiPublicSessionRoute
+  '/api/public/subscriptions': typeof ApiPublicSubscriptionsRoute
   '/api/public/tutorial': typeof ApiPublicTutorialRoute
 }
 export interface FileRoutesByTo {
@@ -111,6 +118,7 @@ export interface FileRoutesByTo {
   '/api/public/planned-purchase': typeof ApiPublicPlannedPurchaseRoute
   '/api/public/register': typeof ApiPublicRegisterRoute
   '/api/public/session': typeof ApiPublicSessionRoute
+  '/api/public/subscriptions': typeof ApiPublicSubscriptionsRoute
   '/api/public/tutorial': typeof ApiPublicTutorialRoute
 }
 export interface FileRoutesById {
@@ -126,6 +134,7 @@ export interface FileRoutesById {
   '/api/public/planned-purchase': typeof ApiPublicPlannedPurchaseRoute
   '/api/public/register': typeof ApiPublicRegisterRoute
   '/api/public/session': typeof ApiPublicSessionRoute
+  '/api/public/subscriptions': typeof ApiPublicSubscriptionsRoute
   '/api/public/tutorial': typeof ApiPublicTutorialRoute
 }
 export interface FileRouteTypes {
@@ -142,6 +151,7 @@ export interface FileRouteTypes {
     | '/api/public/planned-purchase'
     | '/api/public/register'
     | '/api/public/session'
+    | '/api/public/subscriptions'
     | '/api/public/tutorial'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -156,6 +166,7 @@ export interface FileRouteTypes {
     | '/api/public/planned-purchase'
     | '/api/public/register'
     | '/api/public/session'
+    | '/api/public/subscriptions'
     | '/api/public/tutorial'
   id:
     | '__root__'
@@ -170,6 +181,7 @@ export interface FileRouteTypes {
     | '/api/public/planned-purchase'
     | '/api/public/register'
     | '/api/public/session'
+    | '/api/public/subscriptions'
     | '/api/public/tutorial'
   fileRoutesById: FileRoutesById
 }
@@ -185,6 +197,7 @@ export interface RootRouteChildren {
   ApiPublicPlannedPurchaseRoute: typeof ApiPublicPlannedPurchaseRoute
   ApiPublicRegisterRoute: typeof ApiPublicRegisterRoute
   ApiPublicSessionRoute: typeof ApiPublicSessionRoute
+  ApiPublicSubscriptionsRoute: typeof ApiPublicSubscriptionsRoute
   ApiPublicTutorialRoute: typeof ApiPublicTutorialRoute
 }
 
@@ -267,6 +280,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicSessionRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/subscriptions': {
+      id: '/api/public/subscriptions'
+      path: '/api/public/subscriptions'
+      fullPath: '/api/public/subscriptions'
+      preLoaderRoute: typeof ApiPublicSubscriptionsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/tutorial': {
       id: '/api/public/tutorial'
       path: '/api/public/tutorial'
@@ -289,6 +309,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicPlannedPurchaseRoute: ApiPublicPlannedPurchaseRoute,
   ApiPublicRegisterRoute: ApiPublicRegisterRoute,
   ApiPublicSessionRoute: ApiPublicSessionRoute,
+  ApiPublicSubscriptionsRoute: ApiPublicSubscriptionsRoute,
   ApiPublicTutorialRoute: ApiPublicTutorialRoute,
 }
 export const routeTree = rootRouteImport

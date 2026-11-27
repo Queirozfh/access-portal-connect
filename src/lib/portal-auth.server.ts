@@ -1,7 +1,7 @@
 import { createClient } from '@supabase/supabase-js';
 import type { Database } from '@/integrations/supabase/types';
 
-export async function portalAuth(request: Request) {
+export async function portalAuth(request: Request, options: { allowExpired?: boolean } = {}) {
   const bearer = request.headers.get('authorization') || '';
   if (!bearer.startsWith('Bearer ')) return null;
   const token = bearer.slice(7), url = process.env['SUPABASE_URL'], key = process.env['SUPABASE_PUBLISHABLE_KEY'];
@@ -15,6 +15,7 @@ export async function portalAuth(request: Request) {
   const { data, error } = await client.auth.getUser(token);
   if (error || !data.user) return null;
   const expiry = data.user.app_metadata?.['expires_at'];
-  if (typeof expiry === 'string' && new Date(expiry).getTime() <= Date.now()) return null;
-  return { client, userId: data.user.id };
+  const expired = typeof expiry === 'string' && new Date(expiry).getTime() <= Date.now();
+  if (expired && !options.allowExpired) return null;
+  return { client, userId: data.user.id, user: data.user, expired };
 }

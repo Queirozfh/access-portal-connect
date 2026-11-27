@@ -299,7 +299,6 @@ async function verifyAccount() {
     throw Error("Sua sessão expirou.");
   }
   let expiresAt = user.app_metadata?.expires_at;
-  if (expiresAt && new Date(expiresAt).getTime() <= Date.now()) throw Error("suspenso");
   let roles = await cloudFetch("/rest/v1/rpc/has_role", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -311,6 +310,7 @@ async function verifyAccount() {
     name: user.user_metadata?.name || "Eu",
     role: roles.ok && (await roles.json()) === true ? "admin" : "access",
     expiresAt,
+    expired: Boolean(expiresAt && new Date(expiresAt).getTime() <= Date.now()),
     accessLevel: previous?.accessLevel,
     features: previous?.features,
   };
@@ -457,8 +457,49 @@ window.addEventListener("online", () => {
     refreshAccess();
   }
 });
+function enterBillingOnly() {
+  if (!authUser) return;
+  authUser.expired = true;
+  backendSyncEnabled = false;
+  db = emptyState();
+  originalState = null;
+  page = "plano";
+  document.body.classList.add("billing-only");
+  document.querySelectorAll("#nav [data-page]").forEach((item) => {
+    item.hidden = item.dataset.page !== "plano";
+  });
+  document.querySelectorAll(".sidebar .side-label").forEach((label) => (label.hidden = true));
+  document.querySelector("#monthPicker").hidden = true;
+  for (const selector of ["#monthLockButton", "#privacyToggle", "#passwordButton", "#themeToggle"]) {
+    const element = document.querySelector(selector);
+    if (element) element.hidden = true;
+  }
+  document.querySelector("#accessNotice").innerHTML = "";
+  document.querySelector("#pageTitle").textContent = "Meu plano";
+}
+function restoreBillingNavigation() {
+  document.body.classList.remove("billing-only");
+  document.querySelectorAll("#nav [data-page], .sidebar .side-label").forEach((item) => (item.hidden = false));
+  for (const selector of ["#monthPicker", "#monthLockButton", "#privacyToggle", "#passwordButton", "#themeToggle"]) {
+    const element = document.querySelector(selector);
+    if (element) element.hidden = false;
+  }
+}
 async function startAuthenticatedApp() {
   await verifyAccount();
+  if (authUser.expired) {
+    enterBillingOnly();
+    document.body.classList.remove("auth-locked");
+    document.querySelector("#authScreen").hidden = true;
+    document.querySelector('[data-page="admin"]').style.display = "none";
+    document.querySelector("#logoutButton").textContent = (authUser.name || authUser.email || "U").slice(0, 1).toUpperCase();
+    applyTheme();
+    setupProfileMenu();
+    window.doLogout = logoutPortalAccount;
+    render();
+    return;
+  }
+  restoreBillingNavigation();
   await readCloudState();
   await loadFeatureAccess();
   monthInput.value = nextVisibleMonth(isoMonth(new Date()));
@@ -475,19 +516,21 @@ async function startAuthenticatedApp() {
   document.querySelector("#passwordButton").onclick = openChangePassword;
   document.querySelector("#themeToggle").onclick = toggleTheme;
   setupProfileMenu();
-  window.doLogout = async () => {
-    document.querySelector("#profileMenu").hidden = true;
-    await backendWrites;
-    await fetch("/api/public/logout", { method: "POST", credentials: "same-origin", headers: { Authorization: "Bearer " + (cloudSession?.at || "") } }).catch(() => {});
-    cloudSession = null;
-    authUser = null;
-    db = emptyState();
-    originalState = null;
-    localStorage.removeItem("cdm-sessao");
-    localStorage.removeItem(KEY);
-    for (let key of Object.keys(localStorage)) if (/^sb-.*-auth-token$/.test(key)) localStorage.removeItem(key);
-    showAuthScreen();
-  };
+  window.doLogout = logoutPortalAccount;
+}
+async function logoutPortalAccount() {
+  const menu = document.querySelector("#profileMenu");
+  if (menu) menu.hidden = true;
+  await backendWrites;
+  await fetch("/api/public/logout", { method: "POST", credentials: "same-origin", headers: { Authorization: "Bearer " + (cloudSession?.at || "") } }).catch(() => {});
+  cloudSession = null;
+  authUser = null;
+  db = emptyState();
+  originalState = null;
+  localStorage.removeItem("cdm-sessao");
+  localStorage.removeItem(KEY);
+  for (let key of Object.keys(localStorage)) if (/^sb-.*-auth-token$/.test(key)) localStorage.removeItem(key);
+  showAuthScreen();
 }
 function closeAccessNotifications(){const button=document.querySelector('#accessNotificationsButton'),panel=document.querySelector('#accessNotificationsPanel');if(!button||!panel)return;panel.hidden=true;button.setAttribute('aria-expanded','false')}
 function renderAccessNotifications(users){const wrap=document.querySelector('#accessNotifications'),button=document.querySelector('#accessNotificationsButton'),panel=document.querySelector('#accessNotificationsPanel'),count=document.querySelector('#accessNotificationCount');if(!wrap||!button||!panel||!count)return;wrap.hidden=authUser?.role!=='admin';if(wrap.hidden)return;const now=Date.now(),warnings=users.filter(u=>!u.admin&&!u.suspended&&u.expires_at&&new Date(u.expires_at).getTime()>now&&new Date(u.expires_at).getTime()-now<=604800000).sort((a,b)=>new Date(a.expires_at)-new Date(b.expires_at));count.hidden=!warnings.length;count.textContent=warnings.length>99?'99+':String(warnings.length);button.setAttribute('aria-label',warnings.length?`${warnings.length} acesso(s) próximo(s) do vencimento`:'Notificações de acesso; nenhum vencimento próximo');const rows=warnings.map(user=>{const remaining=new Date(user.expires_at).getTime()-now,days=Math.floor(remaining/86400000),hours=Math.floor((remaining%86400000)/3600000),until=days>0?`vence em ${days} dia(s) e ${hours} h`:remaining<3600000?'vence em menos de 1 hora':`vence em ${hours} hora(s)`;return `<article class="access-notification-item"><strong>${esc(user.name||user.email||'Usuário')}</strong><span>${esc(until)}</span><small>Data limite: ${esc(new Date(user.expires_at).toLocaleString('pt-BR'))}</small></article>`}).join('');panel.innerHTML=`<h2>Acessos próximos do vencimento</h2><p>Contas ativas com prazo nos próximos 7 dias.</p>${warnings.length?`<div class="access-notification-list">${rows}</div>`:'<div class="access-notification-empty">Nenhum acesso próximo do vencimento.</div>'}<button type="button" class="access-notification-footer" data-open-admin-users>Gerenciar acessos</button>`;panel.querySelector('[data-open-admin-users]').onclick=()=>{closeAccessNotifications();setPage('admin')};button.onclick=()=>{panel.hidden=!panel.hidden;button.setAttribute('aria-expanded',String(!panel.hidden))}}
