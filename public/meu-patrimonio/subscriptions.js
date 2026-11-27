@@ -173,7 +173,7 @@ async function loadSubscriptionPage() {
 
 function adminPlansMarkup() {
   return `<div class="admin-plan-toolbar"><div><h2>Planos comerciais PF</h2><p>Defina preço por período, duração e nível de funções de cada plano.</p></div><button class="btn primary" data-plan-new>＋ Novo plano pago</button></div>
-    <form id="adminPlanForm" class="admin-plan-form" hidden novalidate onsubmit="return false">
+    <form id="adminPlanForm" class="admin-plan-form" hidden novalidate>
       <input type="hidden" name="id"><input type="hidden" name="is_free">
       <div class="admin-plan-form-heading"><strong id="adminPlanFormTitle">Novo plano</strong><button type="button" class="mini-btn" data-plan-cancel>Fechar</button></div>
       <div class="admin-plan-fields">
@@ -209,6 +209,8 @@ function mountAdminTabs() {
   content.replaceChildren();
   content.insertAdjacentHTML("beforeend", adminTabsMarkup());
   content.append(accessPane, plansPane);
+  const planForm = plansPane.querySelector("#adminPlanForm");
+  planForm?.addEventListener("submit", saveAdminPlanForm);
 }
 
 function renderAdminPlanList(plans) {
@@ -378,10 +380,10 @@ document.addEventListener("change", (event) => {
     fillPlanFeaturePreview(Number(event.target.value));
 });
 
-document.addEventListener("submit", async (event) => {
-  if (event.target?.id !== "adminPlanForm") return;
+async function saveAdminPlanForm(event) {
   event.preventDefault();
   const form = event.target;
+  if (!(form instanceof HTMLFormElement) || form.id !== "adminPlanForm") return;
   const values = Object.fromEntries(new FormData(form));
   const isFree = values.is_free === "true";
   const name = String(values.name || "").trim();
@@ -429,4 +431,4 @@ document.addEventListener("submit", async (event) => {
   } finally {
     submit.disabled = false;
   }
-});
+}
