@@ -71,6 +71,13 @@
       "when": 1795798067000,
       "tag": "0010_business_workspaces",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1795800655478,
+      "tag": "0011_business_workspace_admin_level_grants",
+      "breakpoints": true
     }
   ]
 }

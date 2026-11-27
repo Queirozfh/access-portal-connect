@@ -1,4 +1,4 @@
-import { ACCESS_FEATURE_IDS } from '@/lib/access-control';
+import { ACCESS_FEATURE_IDS, defaultUserAccessLevel } from '@/lib/access-control';
 
 export type BusinessWorkspaceRole = 'owner' | 'admin' | 'finance' | 'collaborator' | 'accountant';
 
@@ -31,10 +31,25 @@ export async function businessPlanForOwner(ownerUserId: string) {
   const { supabaseAdmin } = await import('@/integrations/supabase/client.server');
   const admin = await userIsAdmin(ownerUserId);
   if (admin) return { active: true, accessLevel: 5, memberLimit: 5, admin: true };
-  const { data: subscription, error } = await supabaseAdmin.from('user_subscriptions')
-    .select('plan_id, status, expires_at, access_level_override')
-    .eq('user_id', ownerUserId).maybeSingle();
+  const [{ data: subscription, error }, { data: authData, error: authError }] = await Promise.all([
+    supabaseAdmin.from('user_subscriptions')
+      .select('plan_id, status, expires_at, access_level_override')
+      .eq('user_id', ownerUserId).maybeSingle(),
+    supabaseAdmin.auth.admin.getUserById(ownerUserId),
+  ]);
   if (error) throw error;
+  if (authError || !authData.user) throw authError || new Error('Titular do espaço não encontrado.');
+  const metadata = authData.user.app_metadata as { access_level?: number; expires_at?: string } | undefined;
+  const metadataExpiryActive = !metadata?.expires_at || Date.parse(metadata.expires_at) > Date.now();
+  if (!subscription) {
+    const accessLevel = Number(metadata?.access_level) || defaultUserAccessLevel(authData.user.created_at);
+    return {
+      active: accessLevel === 5 && metadataExpiryActive,
+      accessLevel,
+      memberLimit: accessLevel === 5 ? 5 : 1,
+      admin: false,
+    };
+  }
   let plan: { access_level: number; member_limit: number } | null = null;
   if (subscription?.plan_id) {
     const result = await supabaseAdmin.from('subscription_plans')
@@ -45,6 +60,7 @@ export async function businessPlanForOwner(ownerUserId: string) {
   const accessLevel = Number(subscription?.access_level_override || plan?.access_level || 0);
   const active = Boolean(subscription && ['active', 'trialing'].includes(subscription.status)
     && (!subscription.expires_at || new Date(subscription.expires_at).getTime() > Date.now())
+    && metadataExpiryActive
     && accessLevel === 5);
   return { active, accessLevel, memberLimit: Math.min(500, Math.max(1, Number(plan?.member_limit) || 1)), admin: false };
 }

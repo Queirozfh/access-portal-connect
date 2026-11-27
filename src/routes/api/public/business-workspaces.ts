@@ -82,7 +82,11 @@ export const Route = createFileRoute('/api/public/business-workspaces')({
         });
       } catch (error) {
         console.error('[business-workspaces] Could not load workspace catalog', error);
-        return json({ error: 'Não foi possível carregar os espaços empresariais.' }, 503);
+        const code = (error as { code?: string } | null)?.code || '';
+        const setupMissing = ['42P01', 'PGRST202', 'PGRST205', '42883'].includes(code);
+        return json({ error: setupMissing
+          ? 'A migração dos espaços empresariais ainda não foi aplicada neste ambiente.'
+          : 'Não foi possível carregar os espaços empresariais.' }, 503);
       }
     },
     POST: async ({ request }) => {

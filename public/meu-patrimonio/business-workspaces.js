@@ -4,6 +4,10 @@ let businessWorkspaceLoadError = '';
 const workspaceRoleLabels = { owner: 'Titular', admin: 'Administrador', finance: 'Financeiro', collaborator: 'Colaborador', accountant: 'Contador · somente leitura' };
 const workspaceAssignableRoles = ['admin', 'finance', 'collaborator', 'accountant'];
 
+function showBusinessWorkspaceNav() {
+  const nav = document.querySelector('#businessWorkspacesNav');
+  if (nav) nav.hidden = false;
+}
 async function businessWorkspaceCall(method = 'GET', body = null) {
   const response = await fetch('/api/public/business-workspaces', {
     method,
@@ -60,15 +64,13 @@ async function loadBusinessWorkspaceCatalog() {
       if (savedId) localStorage.removeItem(activeKey);
       delete authUser.workspaceRole;
     }
-    const nav = document.querySelector('#businessWorkspacesNav');
-    if (nav) nav.hidden = !(catalog.canCreate || (catalog.workspaces || []).length || (catalog.invitations || []).length);
+    showBusinessWorkspaceNav();
     return catalog;
   } catch (error) {
     businessWorkspaceCatalog = { workspaces: [], invitations: [], canCreate: false, defaultMemberLimit: 1 };
     businessWorkspaceLoadError = error?.message || 'Espaços empresariais indisponíveis.';
     activeBusinessWorkspaceId = localStorage.getItem('cdm-active-business-workspace-' + authUser.id) || null;
-    const nav = document.querySelector('#businessWorkspacesNav');
-    if (nav) nav.hidden = !activeBusinessWorkspaceId;
+    showBusinessWorkspaceNav();
     return businessWorkspaceCatalog;
   }
 }
@@ -94,8 +96,7 @@ loadFeatureAccess = async function() {
     delete authUser.workspaceRole;
     localStorage.setItem('cdm-user-cache', JSON.stringify(authUser));
   }
-  const nav = document.querySelector('#businessWorkspacesNav');
-  if (nav) nav.hidden = !(businessWorkspaceCatalog.canCreate || businessWorkspaceCatalog.workspaces.length || businessWorkspaceCatalog.invitations.length);
+  showBusinessWorkspaceNav();
   return result;
 };
 
@@ -183,8 +184,8 @@ function businessWorkspacePage() {
     const inviteRows = (active.invitations || []).map(invite => `<div class="workspace-pending-invite"><span><strong>${esc(invite.invited_email)}</strong><small>Convite para ${esc(workspaceRoleLabels[invite.role] || invite.role)} · expira ${esc(new Date(invite.expires_at).toLocaleDateString('pt-BR'))}</small></span><span class="workspace-role-pill">Pendente</span></div>`).join('');
     detail = `<section class="card workspace-detail"><div class="section-head"><div><span class="workspace-kicker">ESPAÇO ATIVO · ${esc(workspaceRoleLabels[active.role] || active.role)}</span><h2>${esc(active.name)}</h2><p>Os dados desta empresa são compartilhados apenas com membros autorizados.</p></div><button type="button" class="btn secondary" id="leaveBusinessWorkspace">Voltar ao perfil pessoal</button></div>${manager ? `<form id="businessWorkspaceRenameForm" class="workspace-rename-form"><div class="field"><label for="businessWorkspaceRename">Nome do espaço</label><input id="businessWorkspaceRename" name="name" maxlength="120" value="${esc(active.name)}" required></div><button type="submit" class="btn secondary">Salvar nome</button></form><form id="businessWorkspaceInviteForm" class="workspace-invite-form"><div class="field"><label for="businessInviteEmail">Convidar por e-mail</label><input id="businessInviteEmail" name="email" type="email" maxlength="255" placeholder="nome@empresa.com" required></div><div class="field"><label for="businessInviteRole">Função</label><select id="businessInviteRole" name="role"><option value="finance">Financeiro</option><option value="collaborator">Colaborador</option><option value="accountant">Contador · somente leitura</option><option value="admin">Administrador</option></select></div><button type="submit" class="btn primary">Enviar convite</button><small>O convite fica vinculado ao e-mail informado e aparece quando a pessoa entrar no aplicativo.</small></form>` : ''}<div class="workspace-members-heading"><div><h3>Equipe</h3><p>${active.memberCount} de ${active.memberLimit} acessos ocupados</p></div><span class="workspace-role-pill">${manager ? 'Gerência de equipe disponível' : 'Acesso conforme função'}</span></div><div class="workspace-members">${memberRows}</div>${inviteRows ? `<div class="workspace-pending-list"><h3>Convites pendentes</h3>${inviteRows}</div>` : ''}</section>`;
   }
-  const warning = !catalog.workspaces.length && !catalog.invitations.length && !catalog.canCreate
-    ? `<div class="workspace-empty-state"><span>▤</span><strong>Nenhum espaço empresarial disponível</strong><p>O nível 5 pode criar um espaço compartilhado. Você também pode abrir um convite enviado para seu e-mail.</p></div>`
+  const warning = !catalog.workspaces.length && !catalog.invitations.length && !catalog.canCreate && !businessWorkspaceLoadError
+    ? `<div class="workspace-empty-state"><span>▤</span><strong>Recurso disponível no nível 5</strong><p>É necessário ter acesso ativo ao nível 5 para criar um espaço empresarial compartilhado. Convites recebidos por e-mail também aparecerão aqui.</p></div>`
     : '';
   const setupError = businessWorkspaceLoadError && /migra|tabela|workspace|espaço/i.test(businessWorkspaceLoadError)
     ? `<div class="auth-error workspace-error">${esc(businessWorkspaceLoadError)}</div>` : '';
@@ -209,8 +210,7 @@ render = function() {
     document.querySelector('#content').innerHTML = businessWorkspacePage();
     bindBusinessWorkspaceEvents();
   }
-  const nav = document.querySelector('#businessWorkspacesNav');
-  if (nav) nav.hidden = !(businessWorkspaceCatalog.canCreate || businessWorkspaceCatalog.workspaces.length || businessWorkspaceCatalog.invitations.length);
+  showBusinessWorkspaceNav();
   return result;
 };
 
@@ -287,9 +287,3 @@ function bindBusinessWorkspaceEvents() {
     catch (error) { toast(error.message); }
   });
 }
-
-document.addEventListener('click', event => {
-  const nav = event.target.closest('#businessWorkspacesNav');
-  if (nav && businessWorkspaceCatalog.workspaces.length + businessWorkspaceCatalog.invitations.length === 0 && !businessWorkspaceCatalog.canCreate)
-    event.preventDefault();
-});
