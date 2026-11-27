@@ -70,13 +70,13 @@ body {
   letter-spacing: 1.45px;
   color: #848aa4;
   font-weight: 700;
-  margin: 28px 10px 10px;
+  margin: 20px 10px 8px;
 }
 .nav-item {
   border: 0;
   color: #bfc3d4;
   background: transparent;
-  padding: 11px 12px;
+  padding: 9px 12px;
   border-radius: 9px;
   width: 100%;
   text-align: left;
@@ -85,7 +85,7 @@ body {
   gap: 12px;
   font: 500 13px "DM Sans";
   cursor: pointer;
-  margin: 2px 0;
+  margin: 1px 0;
 }
 .nav-item i {
   font-style: normal;
