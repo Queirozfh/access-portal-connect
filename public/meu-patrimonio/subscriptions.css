@@ -19,3 +19,49 @@ body[data-theme="dark"] .admin-plan-preview ul,
 body[data-theme="dark"] .admin-plan-row>p{color:var(--muted)}
 .admin-plan-form-actions span{min-height:18px;line-height:1.45}
 .admin-plan-form-actions span.is-error{color:#e9828c}
+
+.subscription-period-switch{display:flex;align-items:center;gap:5px;width:max-content;max-width:100%;margin:18px 0 8px;padding:5px;border:1px solid var(--line);border-radius:14px;background:var(--paper);box-shadow:0 6px 18px rgba(7,12,24,.06)}
+.subscription-period-switch button{display:flex;align-items:center;gap:8px;min-height:38px;padding:8px 14px;border:0;border-radius:10px;background:transparent;color:var(--muted);font:700 12px "DM Sans",sans-serif;cursor:pointer}
+.subscription-period-switch button.active{background:#c39d60;color:#1b1c22;box-shadow:0 4px 12px rgba(195,157,96,.2)}
+.subscription-period-switch button span{padding:3px 6px;border-radius:999px;background:rgba(195,157,96,.15);color:#98723a;font-size:9px}
+.subscription-period-switch button.active span{background:rgba(255,255,255,.27);color:#241d12}
+.subscription-period-switch button:focus-visible{outline:2px solid #c39d60;outline-offset:2px}
+.subscription-period-note{margin:0 0 12px;color:var(--muted);font-size:11px;line-height:1.5}
+.subscription-annual-price-details{display:grid;gap:4px;margin-top:7px}
+.subscription-annual-price-details>div{display:flex;align-items:center;gap:7px}
+.subscription-annual-price-details s{color:var(--muted);font-size:11px}
+.subscription-annual-price-details>div span{padding:3px 7px;border:1px solid rgba(195,157,96,.3);border-radius:999px;background:rgba(195,157,96,.1);color:#a17b3d;font-size:9px;font-weight:800}
+.subscription-annual-price-details p,.subscription-annual-price-details small{margin:0;color:var(--muted);font-size:10px}
+.subscription-annual-price-details p strong{color:var(--ink);font-size:11px}
+.subscription-annual-price-details small{font-size:9px}
+.subscription-annual-empty{margin:8px 0 14px;padding:12px 14px;border:1px dashed color-mix(in srgb,#c39d60 45%,var(--line));border-radius:12px;color:var(--muted);font-size:11px}
+.subscription-annual-upgrade{display:grid;gap:16px;margin-top:20px;padding:clamp(16px,3vw,22px);border-color:color-mix(in srgb,#c39d60 35%,var(--line));background:radial-gradient(ellipse at 100% 0%,rgba(195,157,96,.11),transparent 38%),var(--paper);box-shadow:0 12px 28px rgba(7,12,24,.07)}
+.subscription-annual-upgrade-heading{display:flex;justify-content:space-between;align-items:flex-start;gap:14px}
+.subscription-annual-upgrade-heading .eyebrow{color:#a17b3d;font-size:9px;font-weight:800;letter-spacing:.13em}
+.subscription-annual-upgrade-heading h3{margin:5px 0;font:750 19px Manrope,sans-serif;color:var(--ink)}
+.subscription-annual-upgrade-heading p{max-width:680px;margin:0;color:var(--muted);font-size:11px;line-height:1.55}
+.subscription-upgrade-mark{display:grid;place-items:center;width:42px;height:42px;flex:none;border:1px solid rgba(195,157,96,.32);border-radius:13px;background:rgba(195,157,96,.1);color:#bd914a;font-size:21px}
+.subscription-annual-upgrade-controls{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:11px}
+.subscription-annual-upgrade-controls label{display:grid;align-content:start;gap:7px;min-width:0;color:var(--muted);font-size:10px;font-weight:700}
+.subscription-annual-upgrade-controls label>span{display:flex;justify-content:space-between;gap:8px;color:var(--ink);font-size:10px}
+.subscription-annual-upgrade-controls input[type=text],.subscription-annual-upgrade-controls select{width:100%;min-width:0;min-height:38px;padding:8px 10px;border:1px solid var(--line);border-radius:9px;background:var(--paper);color:var(--ink);font:500 11px "DM Sans",sans-serif}
+.subscription-annual-upgrade-controls input[readonly]{opacity:.8}
+.subscription-annual-upgrade-controls .subscription-annual-days{grid-column:span 2}
+.subscription-annual-upgrade-controls input[type=range]{width:100%;accent-color:#c39d60}
+.subscription-annual-days output{color:#a17b3d;font-weight:800}
+.subscription-annual-quote{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0 14px;padding:3px 14px;border:1px solid var(--line);border-radius:12px;background:color-mix(in srgb,var(--bg) 72%,var(--paper))}
+.subscription-annual-quote>div{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid color-mix(in srgb,var(--line) 72%,transparent);font-size:10px}
+.subscription-annual-quote>div span{color:var(--muted)}
+.subscription-annual-quote>div strong{color:var(--ink);font-size:11px;white-space:nowrap}
+.subscription-annual-quote .subscription-annual-quote-total{grid-column:1/-1;border:0}
+.subscription-annual-quote-total strong{font:800 21px Manrope,sans-serif!important;color:#a17b3d!important}
+.subscription-annual-request{width:100%;max-width:360px;justify-self:end}
+.subscription-annual-disclaimer{color:var(--muted);font-size:10px;line-height:1.5;text-align:right}
+body[data-theme="dark"] .subscription-period-switch{background:rgba(30,36,49,.96);box-shadow:0 8px 20px rgba(3,7,15,.24)}
+body[data-theme="dark"] .subscription-period-switch button.active{color:#1b1c22}
+body[data-theme="dark"] .subscription-annual-upgrade{background:radial-gradient(ellipse at 100% 0%,rgba(195,157,96,.14),transparent 38%),linear-gradient(145deg,rgba(37,44,59,.98),rgba(30,36,49,.98));box-shadow:0 14px 30px rgba(3,7,15,.25)}
+body[data-theme="dark"] .subscription-annual-upgrade-controls input[type=text],body[data-theme="dark"] .subscription-annual-upgrade-controls select{background:rgba(12,16,25,.38);border-color:rgba(170,185,208,.18);color:var(--ink)}
+body[data-theme="dark"] .subscription-annual-quote{background:rgba(12,16,25,.26);border-color:rgba(170,185,208,.16)}
+body[data-theme="dark"] .subscription-annual-quote>div{border-color:rgba(170,185,208,.12)}
+@media(max-width:780px){.subscription-annual-upgrade-controls{grid-template-columns:repeat(2,minmax(0,1fr))}.subscription-annual-upgrade-controls .subscription-annual-days{grid-column:span 2}}
+@media(max-width:520px){.subscription-period-switch{width:100%}.subscription-period-switch button{flex:1;justify-content:center;padding:8px 9px;font-size:11px}.subscription-period-switch button span{font-size:8px}.subscription-annual-upgrade-controls{grid-template-columns:1fr}.subscription-annual-upgrade-controls .subscription-annual-days{grid-column:span 1}.subscription-annual-quote{grid-template-columns:1fr}.subscription-annual-quote .subscription-annual-quote-total{grid-column:auto}.subscription-annual-upgrade-heading h3{font-size:17px}.subscription-annual-disclaimer{text-align:left}.subscription-annual-request{max-width:none}}
