@@ -32,7 +32,7 @@ function subscriptionsCall(method = "GET", body = null) {
 }
 
 function subscriptionMoney(cents) {
-  return Number(cents || 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+  return (Number(cents || 0) / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 }
 
 function parsePlanPrice(value) {
@@ -140,13 +140,16 @@ function subscriptionPageMarkup(snapshot) {
           : "Solicitar plano";
     const disabled = Boolean(plan.is_free || isCurrent || isPending || status === "admin");
     const isHighest = !plan.is_free && Number(plan.access_level) === highestLevel;
+    const resourceSummary = Number(plan.access_level) === 5
+      ? "+ de 100 recursos disponíveis"
+      : `${plan.features?.length || 0} recursos disponíveis`;
     return `<article class="subscription-plan-card ${isCurrent ? "is-current" : ""} ${isHighest ? "is-highest" : ""} ${plan.is_free ? "is-free" : ""}">
       ${isHighest ? '<span class="subscription-plan-ribbon">Nível mais completo</span>' : ""}
       <div class="subscription-plan-heading"><div><span class="plan-level-pill">Nível ${plan.access_level}</span><h3>${esc(plan.name)}</h3></div>${isCurrent ? '<span class="plan-current-badge">Atual</span>' : ""}</div>
       <p class="subscription-plan-description">${esc(plan.description || "Acesso financeiro pessoal com recursos definidos por nível.")}</p>
       <div class="subscription-price">${plan.is_free ? "Gratuito" : esc(subscriptionMoney(plan.price_cents))}<small>${plan.is_free ? "" : `por ${plan.duration_days} dias`}</small></div>
       <p class="subscription-term">${plan.is_free ? `${plan.duration_days} dias de teste gratuito` : `Acesso por ${plan.duration_days} dias`}</p>
-      <div class="subscription-plan-includes"><span class="subscription-plan-includes-icon" aria-hidden="true">✓</span><span><strong>${plan.features?.length || 0} recursos disponíveis</strong><small>Confira a comparação completa abaixo</small></span></div>
+      <div class="subscription-plan-includes"><span class="subscription-plan-includes-icon" aria-hidden="true">✓</span><span><strong>${esc(resourceSummary)}</strong><small>Confira a comparação completa abaixo</small></span></div>
       <button class="btn ${disabled ? "secondary" : "primary"} subscription-plan-action" data-request-plan="${esc(plan.id)}" ${disabled ? "disabled" : ""}>${action}</button>
     </article>`;
   }).join("");
