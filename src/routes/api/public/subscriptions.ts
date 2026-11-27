@@ -220,7 +220,7 @@ export const Route = createFileRoute("/api/public/subscriptions")({
             }
 
             const standardPlans = [
-              { name: "Free", accessLevel: 1, priceCents: 0, description: null, isFree: true },
+              { name: "Free", accessLevel: 1, priceCents: 0, description: "", isFree: true },
               { name: "Essencial", accessLevel: 2, priceCents: 1990, description: "Acesso aos recursos do nível 2 por 30 dias.", isFree: false },
               { name: "Intermediário", accessLevel: 3, priceCents: 3290, description: "Acesso aos recursos do nível 3 por 30 dias.", isFree: false },
               { name: "Avançado", accessLevel: 4, priceCents: 4290, description: "Acesso aos recursos do nível 4 por 30 dias.", isFree: false },
