@@ -28,7 +28,7 @@ As compras são registradas como itens individuais e podem ser associadas a um c
 4. O avatar no canto superior abre o menu de perfil, onde é possível editar o nome, alterar a senha e sair.
 5. O botão de tema alterna a aparência disponível. O ícone de olho oculta ou revela valores monetários na tela.
 
-Se o aplicativo estiver sem conexão, uma sessão já autenticada pode abrir os dados locais disponíveis e enfileirar alterações para sincronizar quando a rede voltar. A conexão com a nuvem e bancos não funciona offline; aguarde o indicador de sincronização antes de confiar que a fila foi enviada.
+Se o aplicativo estiver sem conexão, uma sessão já autenticada pode abrir os dados locais disponíveis e enfileirar alterações para sincronizar quando a rede voltar. O acesso aos dados da nuvem não funciona offline; aguarde o indicador de sincronização antes de confiar que a fila foi enviada.
 
 ## 3. Início
 
@@ -120,7 +120,6 @@ Esta área agrupa os gastos do mês e os acertos com pessoas.
 - **Consolidado por pessoa:** compara total atribuído, valor recebido e saldo aberto.
 - **Registrar recebimento:** atualiza o acerto daquela pessoa. Pode ser feito em partes.
 - **Cartões e limites:** mostra limite cadastrado, parcelas em aberto vinculadas, comprometido e disponível estimado.
-- **Faturas de bancos conectados:** após autorizar uma conexão bancária, mostra contas/cartões e faturas que a instituição disponibilizar.
 - **Fechamento de fatura:** em cada cartão, use **Fechar fatura do mês** após conferir os lançamentos. O botão grava um resumo consolidado no app; não paga a fatura nem muda o status do banco.
 - **Melhor dia de compra:** estima qual cartão oferece mais tempo até o vencimento com base nos dias de fechamento e vencimento que você cadastrou. Confirme o calendário real no emissor.
 
@@ -212,13 +211,7 @@ O botão **PF · Pessoal / PJ · Empresa** no cabeçalho alterna ambientes indep
 
 O acesso ao ambiente PJ é reservado ao nível 5. Usuários de outros níveis não conseguem alternar para esse perfil.
 
-## 16. Open Finance / conectar banco
-
-Na aba **Patrimônio**, procure **Minhas contas bancárias** e toque em **Conectar meu banco**. Escolha a instituição na janela do provedor, autentique-se no fluxo apresentado pela própria instituição/provedor e autorize os produtos solicitados. Ao concluir, as contas e faturas disponibilizadas aparecem no app. Use **Atualizar saldos e faturas** para sincronizar de novo. A versão atual oferece conexão e sincronização; para revogar o consentimento, use o canal oficial da instituição/provedor, pois não há botão de desconectar nesta tela.
-
-A disponibilidade depende da instituição, do consentimento e dos dados que ela oferece. O saldo conectado é um retrato de sincronização, não substitui o extrato oficial. Se a tela disser que a conexão não está ativada, o administrador precisa configurar as credenciais do provedor no ambiente publicado.
-
-## 17. Admin e níveis de acesso
+## 16. Admin e níveis de acesso
 
 A aba **Admin** só aparece para o administrador. Ela permite conceder acesso individual (nome, e-mail, senha inicial e nível), revisar a situação do usuário e administrar permissões.
 
@@ -244,13 +237,13 @@ Na matriz **Níveis e permissões**, escolha o nível e marque/desmarque cada re
 - **Nível 2 · Essencial:** cadastro e pagamento de entradas/despesas, radar de assinaturas, consulta de faturas, parcelas e linha do tempo.
 - **Nível 3 · Intermediário:** cobrança/recibos, exclusões e rateios, cartões/faturas, consulta de patrimônio, simuladores e relatórios.
 - **Nível 4 · Avançado:** exclusão múltipla, administração de patrimônio e metas, critérios e ferramentas avançadas, análise de compra e exportação.
-- **Nível 5 · Completo:** inclui recursos fiscais, segurança, Open Finance e acesso PJ.
+- **Nível 5 · Completo:** inclui recursos fiscais, segurança e acesso PJ.
 
 O nível 5 mantém todos os recursos. Os níveis superiores preservam as permissões dos inferiores. A permissão do perfil PJ é exclusiva do nível 5. Um recurso não concedido pode aparecer como prévia com cadeado e nível necessário; os controles de uso ficam bloqueados.
 
-No cartão de cada usuário, ajuste o seletor **Nível** para alterar seu nível individual. Ao conceder novo acesso, o formulário aceita um nível inicial. O nível controla o que a interface disponibiliza; áreas sensíveis como Admin e integrações também passam por verificação no servidor. Nem toda gravação financeira antiga tem permissão por ação independente no banco: não compartilhe seu login.
+No cartão de cada usuário, ajuste o seletor **Nível** para alterar seu nível individual. Ao conceder novo acesso, o formulário aceita um nível inicial. O nível controla o que a interface disponibiliza; áreas sensíveis como Admin também passam por verificação no servidor. Nem toda gravação financeira antiga tem permissão por ação independente no banco: não compartilhe seu login.
 
-## 18. Problemas comuns e como resolver
+## 17. Problemas comuns e como resolver
 
 | Situação | O que conferir |
 |---|---|
@@ -261,10 +254,9 @@ No cartão de cada usuário, ajuste o seletor **Nível** para alterar seu nível
 | O cartão mostra limite disponível incorreto | Confirme limite, fechamento/vencimento e se cada despesa foi vinculada ao cartão certo. O valor é estimado pelo cadastro, não consultado em tempo real. |
 | A matriz de permissões não carrega/salva | Atualize a página após a última sincronização do projeto. Se persistir, peça ao administrador para verificar o acesso Admin e a publicação do backend. |
 | Uma prévia tem cadeado | O administrador precisa ativar aquele subitem para o nível do usuário e salvar a matriz. |
-| Open Finance não inicia | Verifique internet, credenciais do provedor no ambiente publicado e disponibilidade da instituição. Tente atualizar depois de autorizar. |
 | Alterações offline não aparecem em outro aparelho | Reconecte à internet, mantenha o app aberto até a sincronização confirmar e atualize a tela. |
 
-## 19. Boas práticas de uso
+## 18. Boas práticas de uso
 
 1. Cadastre pessoas, categorias e cartões antes de lançar muitos gastos.
 2. Ao criar uma compra, confira mês inicial, parcelas, responsável e cartão.
