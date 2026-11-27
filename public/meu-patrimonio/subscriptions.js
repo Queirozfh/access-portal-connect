@@ -105,12 +105,150 @@ function subscriptionComparisonMarkup(plans) {
   </section>`;
 }
 
+let subscriptionBillingPeriod = "monthly";
+let subscriptionAnnualMigrationState = { targetPlanId: "", days: null, discountPercent: null };
+
+function subscriptionAnnualPlanName(plan) {
+  const suffix = " Anual";
+  return plan?.name?.endsWith(suffix) ? plan.name.slice(0, -suffix.length) : plan?.name || "";
+}
+
+function subscriptionAnnualPriceDetails(plan, allPlans) {
+  const monthly = allPlans.find((entry) =>
+    !entry.is_free &&
+    Number(entry.access_level) === Number(plan.access_level) &&
+    Number(entry.duration_days) === 30
+  );
+  if (!monthly) return "";
+  const regularAnnualPrice = Number(monthly.price_cents) * 12;
+  const savings = Math.max(0, regularAnnualPrice - Number(plan.price_cents));
+  if (!regularAnnualPrice || !savings) return "";
+  const discount = (savings / regularAnnualPrice * 100).toLocaleString("pt-BR", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
+  return `<div class="subscription-annual-price-details">
+      <div><s>${esc(subscriptionMoney(regularAnnualPrice))}</s><span>${discount}% de desconto</span></div>
+      <p>Equivale a <strong>${esc(subscriptionMoney(Number(plan.price_cents) / 12))}</strong> por mês</p>
+      <small>Economia anual de ${esc(subscriptionMoney(savings))}</small>
+    </div>`;
+}
+
+function subscriptionAnnualDaysRemaining(expiresAt) {
+  const expires = Date.parse(expiresAt || "");
+  if (!Number.isFinite(expires)) return 365;
+  return Math.max(1, Math.min(365, Math.ceil((expires - Date.now()) / 86400000)));
+}
+
+function recommendedAnnualUpgradeDiscount(currentLevel, targetLevel) {
+  const discounts = {
+    "2:3": 5, "2:4": 10, "2:5": 15,
+    "3:4": 5, "3:5": 10,
+    "4:5": 15,
+  };
+  return discounts[`${Number(currentLevel)}:${Number(targetLevel)}`] || 0;
+}
+
+function annualMigrationMarkup(snapshot) {
+  const subscription = snapshot.subscription || {};
+  const current = subscription.currentPlan;
+  if (
+    subscriptionBillingPeriod !== "annual" ||
+    !current ||
+    Number(current.duration_days) < 360 ||
+    Number(current.access_level) >= 5 ||
+    !["active", "trialing"].includes(subscription.status || "active") ||
+    snapshot.expired
+  ) return "";
+  const targets = (snapshot.plans || [])
+    .filter((plan) => !plan.is_free && Number(plan.duration_days) >= 360 && Number(plan.access_level) > Number(current.access_level))
+    .sort((a, b) => Number(a.access_level) - Number(b.access_level));
+  if (!targets.length) return "";
+  const fallbackTarget = targets.find((plan) => Number(plan.access_level) === 5) || targets[targets.length - 1];
+  const selectedTarget = targets.find((plan) => plan.id === subscriptionAnnualMigrationState.targetPlanId) || fallbackTarget;
+  const days = Number.isInteger(subscriptionAnnualMigrationState.days)
+    ? Math.max(1, Math.min(365, subscriptionAnnualMigrationState.days))
+    : subscriptionAnnualDaysRemaining(subscription.expiresAt);
+  const discount = Number.isFinite(subscriptionAnnualMigrationState.discountPercent)
+    ? subscriptionAnnualMigrationState.discountPercent
+    : recommendedAnnualUpgradeDiscount(current.access_level, selectedTarget.access_level);
+  const pendingSamePlan = subscription.pendingPlan?.id === selectedTarget.id;
+  return `<section class="subscription-annual-upgrade card" data-annual-upgrade>
+    <div class="subscription-annual-upgrade-heading">
+      <div><span class="eyebrow">MIGRAÇÃO ANUAL</span><h3>Simule um upgrade</h3><p>O crédito considera os dias restantes do seu plano anual. Você pode solicitar a mudança sem perder o período já pago.</p></div>
+      <span class="subscription-upgrade-mark" aria-hidden="true">↗</span>
+    </div>
+    <div class="subscription-annual-upgrade-controls">
+      <label><span>Plano atual</span><input type="text" readonly value="${esc(subscriptionAnnualPlanName(current))} · ${esc(subscriptionMoney(current.price_cents))}/ano"></label>
+      <label><span>Plano desejado</span><select data-annual-target>${targets.map((plan) =>
+        `<option value="${esc(plan.id)}" ${plan.id === selectedTarget.id ? "selected" : ""}>${esc(subscriptionAnnualPlanName(plan))} · ${esc(subscriptionMoney(plan.price_cents))}/ano</option>`
+      ).join("")}</select></label>
+      <label class="subscription-annual-days"><span>Dias restantes <output data-annual-days-label>${days} dias</output></span><input type="range" data-annual-days min="1" max="365" value="${days}"></label>
+      <label><span>Desconto adicional</span><select data-annual-discount>
+        ${[0, 5, 10, 15].map((value) => `<option value="${value}" ${value === discount ? "selected" : ""}>${value === 0 ? "Sem bônus" : value + "%"}`).join("")}
+      </select></label>
+    </div>
+    <div class="subscription-annual-quote" data-annual-quote></div>
+    <button type="button" class="btn primary subscription-plan-action subscription-annual-request" data-annual-upgrade-request data-request-plan="${esc(selectedTarget.id)}" data-annual-upgrade="true" ${pendingSamePlan ? "disabled" : ""}>${pendingSamePlan ? "Solicitação pendente" : "Solicitar análise do upgrade"}</button>
+    <small class="subscription-annual-disclaimer">Estimativa para análise administrativa. O app não realiza cobrança online; o valor final e o incentivo dependem de confirmação.</small>
+  </section>`;
+}
+
+function renderAnnualMigrationQuote() {
+  const panel = document.querySelector("[data-annual-upgrade]");
+  const snapshot = subscriptionCatalogCache;
+  if (!panel || !snapshot?.subscription?.currentPlan) return;
+  const current = snapshot.subscription.currentPlan;
+  const targetSelect = panel.querySelector("[data-annual-target]");
+  const discountSelect = panel.querySelector("[data-annual-discount]");
+  const daysInput = panel.querySelector("[data-annual-days]");
+  const target = snapshot.plans?.find((plan) => plan.id === targetSelect?.value);
+  if (!target || !discountSelect || !daysInput) return;
+  const days = Math.max(1, Math.min(365, Number(daysInput.value) || 1));
+  const discountPercent = Math.max(0, Math.min(15, Number(discountSelect.value) || 0));
+  const targetValue = Math.round(Number(target.price_cents) * days / 365);
+  const currentCredit = Math.round(Number(current.price_cents) * days / 365);
+  const difference = Math.max(0, targetValue - currentCredit);
+  const discount = Math.round(difference * discountPercent / 100);
+  const finalValue = Math.max(0, difference - discount);
+  const quote = panel.querySelector("[data-annual-quote]");
+  if (quote) quote.innerHTML = `<div><span>Valor proporcional do plano desejado</span><strong>${esc(subscriptionMoney(targetValue))}</strong></div>
+    <div><span>Crédito do plano atual</span><strong>− ${esc(subscriptionMoney(currentCredit))}</strong></div>
+    <div><span>Diferença antes do incentivo</span><strong>${esc(subscriptionMoney(difference))}</strong></div>
+    <div><span>Desconto adicional (${discountPercent}%)</span><strong>− ${esc(subscriptionMoney(discount))}</strong></div>
+    <div class="subscription-annual-quote-total"><span>Valor estimado da migração</span><strong>${esc(subscriptionMoney(finalValue))}</strong></div>`;
+  const daysLabel = panel.querySelector("[data-annual-days-label]");
+  if (daysLabel) daysLabel.textContent = `${days} dias`;
+  const requestButton = panel.querySelector("[data-annual-upgrade-request]");
+  if (requestButton) {
+    requestButton.dataset.requestPlan = target.id;
+    const pendingSamePlan = snapshot.subscription.pendingPlan?.id === target.id;
+    requestButton.disabled = pendingSamePlan;
+    requestButton.textContent = pendingSamePlan ? "Solicitação pendente" : "Solicitar análise do upgrade";
+  }
+}
+
+function renderSubscriptionPageFromCache() {
+  const content = document.querySelector("#content");
+  if (!content || page !== "plano" || !subscriptionCatalogCache) return;
+  content.innerHTML = subscriptionPageMarkup(subscriptionCatalogCache);
+  renderAnnualMigrationQuote();
+}
+
 function subscriptionPageMarkup(snapshot) {
   const subscription = snapshot.subscription || {};
   const currentPlan = subscription.currentPlan;
   const pendingPlan = subscription.pendingPlan;
   const status = subscription.status || "active";
   const expired = Boolean(snapshot.expired || authUser?.expired || status === "expired");
+  const annualBilling = subscriptionBillingPeriod === "annual";
+  const allPlans = snapshot.plans || [];
+  const freePlans = allPlans.filter((plan) => plan.is_free);
+  const paidPlans = allPlans.filter((plan) =>
+    !plan.is_free &&
+    (annualBilling ? Number(plan.duration_days) >= 360 : Number(plan.duration_days) < 360)
+  );
+  const plans = [...freePlans, ...paidPlans];
   const statusCopy = status === "trialing" && subscription.expiresAt
     ? `Seu teste gratuito termina em ${esc(subscriptionDate(subscription.expiresAt))}.`
     : status === "expired"
@@ -121,14 +259,20 @@ function subscriptionPageMarkup(snapshot) {
           ? `Plano vigente até ${esc(subscriptionDate(subscription.expiresAt) || "prazo indeterminado")}.`
           : "Sua conta mantém as condições de acesso anteriores. Escolha um plano quando desejar conhecer as opções comerciais.";
   const current = currentPlan
-    ? `<strong>${esc(currentPlan.name)}</strong><span>Nível ${currentPlan.access_level} · ${esc(subscriptionStatusText(status))}</span>`
+    ? `<strong>${esc(subscriptionAnnualPlanName(currentPlan))}</strong><span>Nível ${currentPlan.access_level} · ${esc(subscriptionStatusText(status))}${Number(currentPlan.duration_days) >= 360 ? " · Anual" : ""}</span>`
     : `<strong>${status === "admin" ? "Administrador" : "Acesso atual"}</strong><span>Nível ${Number(subscription.currentAccessLevel) || 1} · ${esc(subscriptionStatusText(status))}</span>`;
+  const pendingDowngrade = Boolean(
+    currentPlan && pendingPlan && (Number(pendingPlan.access_level) < Number(currentPlan.access_level) || Number(pendingPlan.duration_days) < Number(currentPlan.duration_days))
+  );
   const pending = pendingPlan
-    ? `<div class="subscription-pending"><strong>Solicitação registrada: ${esc(pendingPlan.name)}</strong><span>O plano continuará pendente até que exista confirmação de pagamento.</span><small>Solicitado em ${esc(subscriptionDate(subscription.pendingRequestedAt))}</small></div>`
+    ? pendingDowngrade
+      ? `<div class="subscription-pending"><strong>Redução solicitada: ${esc(subscriptionAnnualPlanName(pendingPlan))}</strong><span>Seu acesso atual continua até ${esc(subscriptionDate(subscription.expiresAt) || "o vencimento do ciclo")}. A mudança depende de confirmação administrativa.</span><small>Solicitado em ${esc(subscriptionDate(subscription.pendingRequestedAt))}</small></div>`
+      : `<div class="subscription-pending"><strong>Solicitação registrada: ${esc(subscriptionAnnualPlanName(pendingPlan))}</strong><span>O plano continuará pendente até que exista confirmação do administrador.</span><small>Solicitado em ${esc(subscriptionDate(subscription.pendingRequestedAt))}</small></div>`
     : "";
-  const plans = snapshot.plans || [];
-  const highestLevel = Math.max(0, ...plans.filter((plan) => !plan.is_free).map((plan) => Number(plan.access_level) || 0));
+  const highestLevel = Math.max(0, ...paidPlans.map((plan) => Number(plan.access_level) || 0));
   const cards = plans.map((plan) => {
+    const isAnnualPlan = !plan.is_free && Number(plan.duration_days) >= 360;
+    const displayName = subscriptionAnnualPlanName(plan);
     const isCurrent = currentPlan?.id === plan.id && ["active", "trialing"].includes(status) && !expired;
     const isPending = pendingPlan?.id === plan.id;
     const action = plan.is_free
@@ -143,20 +287,44 @@ function subscriptionPageMarkup(snapshot) {
     const resourceSummary = Number(plan.access_level) === 5
       ? "+ de 100 recursos disponíveis"
       : `${plan.features?.length || 0} recursos disponíveis`;
+    const priceMarkup = plan.is_free
+      ? '<div class="subscription-price">Gratuito</div>'
+      : isAnnualPlan
+        ? `<div class="subscription-price">${esc(subscriptionMoney(plan.price_cents))}<small>por ano</small></div>${subscriptionAnnualPriceDetails(plan, allPlans)}`
+        : `<div class="subscription-price">${esc(subscriptionMoney(plan.price_cents))}<small>por 30 dias</small></div>`;
     return `<article class="subscription-plan-card ${isCurrent ? "is-current" : ""} ${isHighest ? "is-highest" : ""} ${plan.is_free ? "is-free" : ""}">
-      ${isHighest ? '<span class="subscription-plan-ribbon">Nível mais completo</span>' : ""}
-      <div class="subscription-plan-heading"><div><span class="plan-level-pill">Nível ${plan.access_level}</span><h3>${esc(plan.name)}</h3></div>${isCurrent ? '<span class="plan-current-badge">Atual</span>' : ""}</div>
+      ${isHighest ? `<span class="subscription-plan-ribbon">${isAnnualPlan ? "Maior economia anual" : "Nível mais completo"}</span>` : ""}
+      <div class="subscription-plan-heading"><div><span class="plan-level-pill">Nível ${plan.access_level}</span><h3>${esc(displayName)}</h3></div>${isCurrent ? '<span class="plan-current-badge">Atual</span>' : ""}</div>
       <p class="subscription-plan-description">${esc(plan.description || "Acesso financeiro pessoal com recursos definidos por nível.")}</p>
-      <div class="subscription-price">${plan.is_free ? "Gratuito" : esc(subscriptionMoney(plan.price_cents))}<small>${plan.is_free ? "" : `por ${plan.duration_days} dias`}</small></div>
-      <p class="subscription-term">${plan.is_free ? `${plan.duration_days} dias de teste gratuito` : `Acesso por ${plan.duration_days} dias`}</p>
+      ${priceMarkup}
+      <p class="subscription-term">${plan.is_free ? `${plan.duration_days} dias de teste gratuito` : isAnnualPlan ? "Acesso por 1 ano (365 dias)" : "Acesso por 30 dias"}</p>
       <div class="subscription-plan-includes"><span class="subscription-plan-includes-icon" aria-hidden="true">✓</span><span><strong>${esc(resourceSummary)}</strong><small>Confira a comparação completa abaixo</small></span></div>
       <button class="btn ${disabled ? "secondary" : "primary"} subscription-plan-action" data-request-plan="${esc(plan.id)}" ${disabled ? "disabled" : ""}>${action}</button>
     </article>`;
   }).join("");
-  return `<section class="subscription-intro"><div class="subscription-intro-copy"><span class="eyebrow">PLANOS PARA SUA CONTA</span><h2>Escolha o nível ideal para você</h2><p>Compare os períodos e recursos. Seu controle financeiro continua organizado no padrão do Meu Patrimônio.</p></div><span class="subscription-intro-mark" aria-hidden="true">✦</span></section>
+  const noAnnualPlans = annualBilling && !paidPlans.length
+    ? '<div class="subscription-annual-empty">As opções anuais estão sendo preparadas. O administrador precisa atualizar o catálogo comercial.</div>'
+    : "";
+  const periodSwitch = `<div class="subscription-period-switch" role="group" aria-label="Período do plano">
+    <button type="button" data-plan-period="monthly" aria-pressed="${String(!annualBilling)}" class="${annualBilling ? "" : "active"}">Mensal</button>
+    <button type="button" data-plan-period="annual" aria-pressed="${String(annualBilling)}" class="${annualBilling ? "active" : ""}">Anual <span>Até 33,22% de economia</span></button>
+  </div>`;
+  const annualNotice = annualBilling
+    ? '<p class="subscription-period-note">Pagamento anual com desconto progressivo. O plano Completo e PJ oferece a maior economia.</p>'
+    : "";
+  const renewalNotice = '<div class="subscription-payment-notice"><span class="subscription-payment-icon" aria-hidden="true">ⓘ</span><div><strong>Solicitações e renovações</strong><span>O pagamento online ainda não está configurado. Os pedidos ficam pendentes de validação administrativa. Simulações de upgrade anual são estimativas; downgrades não reduzem seu acesso antes do vencimento do ciclo. A renovação seguirá o preço vigente informado, após confirmação.</span></div></div>';
+  const plansGrid = plans.length
+    ? `<div class="subscription-plan-grid">${cards}</div>`
+    : "";
+  const migration = annualMigrationMarkup(snapshot);
+  return `<section class="subscription-intro"><div class="subscription-intro-copy"><span class="eyebrow">PLANOS PARA SUA CONTA</span><h2>${annualBilling ? "Planos anuais com desconto" : "Escolha o nível ideal para você"}</h2><p>Compare níveis, recursos e período. Seu controle financeiro continua organizado no padrão do Meu Patrimônio.</p></div><span class="subscription-intro-mark" aria-hidden="true">✦</span></section>
     <section class="subscription-current-card"><div><span class="subscription-status-label">${esc(subscriptionStatusText(status))}</span><div class="subscription-current-info">${current}</div><p>${statusCopy}</p></div>${pending}</section>
-    <div class="subscription-payment-notice"><span class="subscription-payment-icon" aria-hidden="true">ⓘ</span><div><strong>Solicitação de plano</strong><span>O pagamento online ainda não está configurado. Solicitar um plano não gera cobrança nem libera recursos; a ativação depende de confirmação do administrador.</span></div></div>
-    <div class="subscription-plan-grid">${cards || '<div class="empty">Nenhum plano disponível no momento.</div>'}</div>
+    ${renewalNotice}
+    ${periodSwitch}
+    ${annualNotice}
+    ${noAnnualPlans}
+    ${plansGrid || '<div class="empty">Nenhum plano disponível no momento.</div>'}
+    ${migration}
     ${subscriptionComparisonMarkup(plans)}`;
 }
 
@@ -165,10 +333,17 @@ async function loadSubscriptionPage() {
   if (!content || page !== "plano") return;
   content.innerHTML = '<section class="card"><p>Carregando planos…</p></section>';
   try {
+    if (authUser?.role === "admin") {
+      try {
+        await subscriptionsCall("POST", { action: "sync-commercial-plans" });
+      } catch (syncError) {
+        console.warn("Não foi possível sincronizar o catálogo anual", syncError);
+      }
+    }
     const snapshot = await subscriptionsCall();
     if (page !== "plano") return;
     subscriptionCatalogCache = snapshot;
-    content.innerHTML = subscriptionPageMarkup(snapshot);
+    renderSubscriptionPageFromCache();
   } catch (error) {
     if (page === "plano") content.innerHTML = `<section class="card"><div class="auth-error">${esc(error.message)}</div><button class="btn secondary" data-subscription-reload>↻ Tentar novamente</button></section>`;
   }
@@ -391,6 +566,12 @@ document.addEventListener(
 );
 
 document.addEventListener("click", async (event) => {
+  const periodButton = event.target.closest("[data-plan-period]");
+  if (periodButton) {
+    subscriptionBillingPeriod = periodButton.dataset.planPeriod === "annual" ? "annual" : "monthly";
+    renderSubscriptionPageFromCache();
+    return;
+  }
   const tab = event.target.closest("[data-admin-tab]");
   if (tab) {
     activateAdminTab(tab.dataset.adminTab);
@@ -439,7 +620,9 @@ document.addEventListener("click", async (event) => {
     request.disabled = true;
     try {
       await subscriptionsCall("POST", { action: "request-plan", plan_id: request.dataset.requestPlan });
-      toast("Solicitação registrada. O plano só será ativado após confirmação do pagamento.");
+      toast(request.dataset.annualUpgrade === "true"
+        ? "Pedido de upgrade anual registrado. A estimativa e o desconto serão confirmados pelo administrador; nenhuma cobrança foi feita."
+        : "Solicitação registrada. O plano só será ativado após confirmação do administrador.");
       await loadSubscriptionPage();
     } catch (error) {
       toast(error.message);
@@ -448,7 +631,33 @@ document.addEventListener("click", async (event) => {
   }
 });
 
+document.addEventListener("input", (event) => {
+  const daysInput = event.target?.closest?.("[data-annual-days]");
+  if (!daysInput) return;
+  subscriptionAnnualMigrationState.days = Number(daysInput.value);
+  renderAnnualMigrationQuote();
+});
+
 document.addEventListener("change", (event) => {
+  const annualTarget = event.target?.closest?.("[data-annual-target]");
+  if (annualTarget) {
+    const current = subscriptionCatalogCache?.subscription?.currentPlan;
+    const target = subscriptionCatalogCache?.plans?.find((plan) => plan.id === annualTarget.value);
+    subscriptionAnnualMigrationState.targetPlanId = annualTarget.value;
+    if (current && target) {
+      subscriptionAnnualMigrationState.discountPercent = recommendedAnnualUpgradeDiscount(current.access_level, target.access_level);
+      const discountSelect = document.querySelector("[data-annual-discount]");
+      if (discountSelect) discountSelect.value = String(subscriptionAnnualMigrationState.discountPercent);
+    }
+    renderAnnualMigrationQuote();
+    return;
+  }
+  const annualDiscount = event.target?.closest?.("[data-annual-discount]");
+  if (annualDiscount) {
+    subscriptionAnnualMigrationState.discountPercent = Number(annualDiscount.value);
+    renderAnnualMigrationQuote();
+    return;
+  }
   if (event.target?.matches('#adminPlanForm [name="access_level"]'))
     fillPlanFeaturePreview(Number(event.target.value));
 });
