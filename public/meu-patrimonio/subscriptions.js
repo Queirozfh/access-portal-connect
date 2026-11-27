@@ -225,7 +225,7 @@ function renderAdminPlanList(plans) {
     <div class="admin-plan-row-head"><div><span class="plan-level-pill">Nível ${plan.access_level}</span>${plan.is_free ? '<span class="plan-free-pill">Teste inicial</span>' : ""}<h3>${esc(plan.name)}</h3></div><span class="admin-plan-state ${plan.is_active ? "enabled" : "disabled"}">${plan.is_active ? "Ativo" : "Oculto"}</span></div>
     <p>${esc(plan.description || "Sem descrição")}</p><div class="admin-plan-facts"><strong>${plan.is_free ? "Gratuito" : esc(subscriptionMoney(plan.price_cents))}</strong><span>${plan.duration_days} dias</span><span>${plan.features?.length || 0} funções liberadas</span></div>
     <details class="plan-features"><summary>Ver funções do nível ${plan.access_level}</summary>${planFeatureMarkup(plan.features)}</details>
-    <div class="admin-plan-actions"><button type="button" class="btn secondary" data-plan-edit="${esc(plan.id)}">Editar</button>${plan.is_free ? '<button type="button" class="btn secondary" disabled title="O plano gratuito é único e necessário para novos cadastros.">Plano único</button>' : `<button type="button" class="btn secondary" data-plan-duplicate="${esc(plan.id)}">Duplicar</button>`}${plan.is_free ? "" : `<button type="button" class="btn secondary" data-plan-archive="${esc(plan.id)}">${plan.is_active ? "Ocultar" : "Reexibir"}</button>`}</div>
+    <div class="admin-plan-actions"><button type="button" class="btn secondary" data-plan-edit="${esc(plan.id)}">Editar</button><button type="button" class="btn secondary" data-plan-duplicate="${esc(plan.id)}" title="${plan.is_free ? "Cria uma cópia paga, oculta e com preço inicial de R$ 0,01." : "Cria uma cópia independente, oculta e salva automaticamente."}">Duplicar</button>${plan.is_free ? "" : `<button type="button" class="btn secondary" data-plan-archive="${esc(plan.id)}">${plan.is_active ? "Ocultar" : "Reexibir"}</button>`}</div>
   </article>`).join("");
 }
 
@@ -243,15 +243,17 @@ async function loadAdminPlans() {
 }
 
 async function duplicateAdminPlan(plan, button) {
-  if (!plan || plan.is_free) return;
+  if (!plan) return;
   button.disabled = true;
   const name = `Cópia de ${plan.name}`.slice(0, 80);
+  const copiedFromFree = Boolean(plan.is_free);
+  const priceCents = copiedFromFree ? 1 : Number(plan.price_cents);
   try {
     const result = await subscriptionsCall("POST", {
       action: "save-plan",
       name,
       description: plan.description || "",
-      price_cents: Number(plan.price_cents),
+      price_cents: priceCents,
       duration_days: Number(plan.duration_days),
       access_level: Number(plan.access_level),
       is_active: false,
@@ -261,15 +263,18 @@ async function duplicateAdminPlan(plan, button) {
       ...plan,
       id: result.id,
       name,
+      price_cents: priceCents,
       is_free: false,
       is_active: false,
     };
     adminPlanCache = [copy, ...adminPlanCache.filter((entry) => entry.id !== copy.id)];
     openAdminPlanForm(copy);
     const status = document.querySelector("#adminPlanStatus");
-    status.textContent = "Cópia salva e oculta. Revise os dados e marque “Exibir para novos usuários” quando estiver pronta.";
+    status.textContent = copiedFromFree
+      ? "Cópia salva como plano pago oculto, com preço inicial de R$ 0,01. Revise o preço e só marque “Exibir para novos usuários” quando estiver pronta."
+      : "Cópia salva e oculta. Revise os dados e marque “Exibir para novos usuários” quando estiver pronta.";
     status.classList.remove("is-error");
-    toast("Cópia salva como oculta");
+    toast(copiedFromFree ? "Cópia do Free salva como plano pago oculto" : "Cópia salva como oculta");
     await loadAdminPlans();
   } catch (error) {
     toast(error.message);
