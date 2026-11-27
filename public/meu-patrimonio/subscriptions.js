@@ -35,6 +35,15 @@ function subscriptionMoney(cents) {
   return Number(cents || 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 }
 
+function parsePlanPrice(value) {
+  const normalized = String(value || "")
+    .trim()
+    .replace(/\s|R\$/gi, "")
+    .replace(/\.(?=\d{3}(?:\D|$))/g, "")
+    .replace(",", ".");
+  return normalized ? Number(normalized) : Number.NaN;
+}
+
 function subscriptionDate(value) {
   if (!value) return "";
   const date = new Date(value);
@@ -164,12 +173,12 @@ async function loadSubscriptionPage() {
 
 function adminPlansMarkup() {
   return `<div class="admin-plan-toolbar"><div><h2>Planos comerciais PF</h2><p>Defina preço por período, duração e nível de funções de cada plano.</p></div><button class="btn primary" data-plan-new>＋ Novo plano pago</button></div>
-    <form id="adminPlanForm" class="admin-plan-form" hidden onsubmit="return false">
+    <form id="adminPlanForm" class="admin-plan-form" hidden novalidate onsubmit="return false">
       <input type="hidden" name="id"><input type="hidden" name="is_free">
       <div class="admin-plan-form-heading"><strong id="adminPlanFormTitle">Novo plano</strong><button type="button" class="mini-btn" data-plan-cancel>Fechar</button></div>
       <div class="admin-plan-fields">
         <label class="field"><span>Nome</span><input name="name" maxlength="80" required placeholder="Ex.: Essencial"></label>
-        <label class="field"><span>Preço por período (R$)</span><input name="price" type="number" min="0.01" max="999999.99" step="0.01" required></label>
+        <label class="field"><span>Preço por período (R$)</span><input name="price" type="text" inputmode="decimal" autocomplete="off" placeholder="Ex.: 29,90" required></label>
         <label class="field"><span>Duração (dias)</span><input name="duration_days" type="number" min="1" max="3650" step="1" required value="30"></label>
         <label class="field"><span>Nível de acesso</span><select name="access_level">${[1, 2, 3, 4, 5].map((level) => `<option value="${level}">Nível ${level} · ${["Básico", "Essencial", "Intermediário", "Avançado", "Completo"][level - 1]}</option>`).join("")}</select></label>
         <label class="field admin-plan-description"><span>Descrição para o usuário</span><textarea name="description" maxlength="500" rows="2" placeholder="Resumo do que este plano oferece"></textarea></label>
@@ -375,24 +384,37 @@ document.addEventListener("submit", async (event) => {
   const form = event.target;
   const values = Object.fromEntries(new FormData(form));
   const isFree = values.is_free === "true";
-  const price = Number(String(values.price || "0").replace(",", "."));
+  const name = String(values.name || "").trim();
+  const price = parsePlanPrice(values.price);
   const priceCents = isFree ? 0 : Math.round(price * 100);
+  const durationDays = Number(values.duration_days);
   const status = document.querySelector("#adminPlanStatus");
-  if (!isFree && (!Number.isFinite(price) || price <= 0)) {
-    status.textContent = "Informe um preço acima de zero para o plano pago.";
+  const validationError = !name
+    ? "Informe o nome do plano."
+    : name.length > 80
+      ? "O nome deve ter no máximo 80 caracteres."
+      : !isFree && (!Number.isFinite(price) || price <= 0 || price > 999999.99)
+        ? "Informe um preço válido entre R$ 0,01 e R$ 999.999,99. Você pode usar vírgula ou ponto nos centavos."
+        : !Number.isInteger(durationDays) || durationDays < 1 || durationDays > 3650
+          ? "Informe uma duração inteira entre 1 e 3.650 dias."
+          : "";
+  if (validationError) {
+    status.textContent = validationError;
+    status.classList.add("is-error");
     return;
   }
   const submit = form.querySelector('[type="submit"]');
   submit.disabled = true;
   status.textContent = "Salvando…";
+  status.classList.remove("is-error");
   try {
     await subscriptionsCall("POST", {
       action: "save-plan",
       id: values.id || undefined,
-      name: values.name,
+      name,
       description: values.description,
       price_cents: priceCents,
-      duration_days: Number(values.duration_days),
+      duration_days: durationDays,
       access_level: Number(values.access_level),
       is_active: isFree ? true : form.elements.is_active.checked,
     });
@@ -402,6 +424,7 @@ document.addEventListener("submit", async (event) => {
     await loadAdminPlans();
   } catch (error) {
     status.textContent = error.message;
+    status.classList.add("is-error");
   } finally {
     submit.disabled = false;
   }
