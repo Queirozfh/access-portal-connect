@@ -108,7 +108,7 @@ export const Route = createFileRoute('/api/public/business-workspaces')({
           if (sourceError) throw sourceError;
           const original = source?.json ? JSON.parse(source.json) as Record<string, any> : {};
           const existingPj = original['financeProfiles']?.['PJ'] || {};
-          const initialState = { v: original['v'], financeProfiles: { PJ: existingPj }, patrimonioApp: existingPj };
+          const initialState = { v: original['v'], financeProfiles: { PJ: existingPj }, patrimonioApp: {} };
           const { data: id, error } = await supabaseAdmin.rpc('create_business_workspace', {
             p_owner: auth.userId, p_name: name, p_member_limit: entitlement.memberLimit,
             p_initial_state: JSON.stringify(initialState),
