@@ -147,12 +147,18 @@ async function flushBusinessWorkspaceChanges() {
     toast('Conecte-se para sincronizar as alterações antes de trocar de espaço.');
     return false;
   }
+  const sourceQueueKey = 'cdm-pending-state-' + accountRow;
   save();
   await flushPendingState();
-  if (stateConflict || localStorage.getItem('cdm-pending-state-' + accountRow)) {
-    toast('Ainda há alterações sem sincronizar. Resolva a sincronização antes de trocar de espaço.');
-    return false;
+  if (stateConflict || localStorage.getItem(sourceQueueKey)) {
+    if (!stateConflict) {
+      const status = document.querySelector('#saveStatus');
+      if (status) status.textContent = 'Alterações preservadas neste perfil · sincronização pendente';
+    }
+    toast('A troca seguirá. As alterações deste perfil continuam preservadas neste dispositivo e aguardam sincronização.');
   }
+  // Each profile/workspace has a separate persisted queue. A conflict in the
+  // source scope must not prevent opening another scope or discard its data.
   return true;
 }
 
@@ -257,13 +263,21 @@ function bindBusinessWorkspaceEvents() {
   document.querySelector('#businessWorkspaceInviteForm')?.addEventListener('submit', async event => {
     event.preventDefault();
     if (!activeBusinessWorkspaceId) return;
-    const form = new FormData(event.currentTarget);
+    // currentTarget is cleared by the browser after the event callback returns,
+    // so retain the form reference before the first await.
+    const inviteForm = event.currentTarget;
+    const workspaceId = activeBusinessWorkspaceId;
+    const submitButton = inviteForm.querySelector('button[type="submit"]');
+    if (submitButton?.disabled) return;
+    const form = new FormData(inviteForm);
+    if (submitButton) submitButton.disabled = true;
     try {
-      const result = await businessWorkspaceCall('POST', { action: 'invite', workspace_id: activeBusinessWorkspaceId, email: String(form.get('email') || ''), role: String(form.get('role') || '') });
-      event.currentTarget.reset();
+      const result = await businessWorkspaceCall('POST', { action: 'invite', workspace_id: workspaceId, email: String(form.get('email') || ''), role: String(form.get('role') || '') });
+      inviteForm.reset();
       await refreshBusinessWorkspaceView();
       toast(result.message || 'Convite criado.');
     } catch (error) { toast(error.message); }
+    finally { if (submitButton?.isConnected) submitButton.disabled = false; }
   });
   document.querySelectorAll('[data-workspace-accept]').forEach(button => button.onclick = async () => {
     try {
