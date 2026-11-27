@@ -73,38 +73,101 @@ function planFeatureMarkup(features) {
   ).join("");
 }
 
+function subscriptionPlanHighlightFeatures(plan, visiblePlans) {
+  const level = Number(plan.access_level) || 1;
+  const previousPlan = visiblePlans
+    .filter((entry) => Number(entry.access_level) < level)
+    .sort((a, b) => Number(b.access_level) - Number(a.access_level))[0];
+  const previousIds = new Set((previousPlan?.features || []).map((feature) => feature.id || feature.label));
+  const features = (plan.features || [])
+    .filter((feature) => !previousIds.has(feature.id || feature.label))
+    .map((feature) => feature.id === "profile.pj"
+      ? { ...feature, label: "Sistema PJ · ambiente financeiro empresarial separado" }
+      : feature);
+  if (level === 5 && !features.some((feature) => feature.id === "profile.pj")) {
+    features.push({
+      id: "profile.pj",
+      label: "Sistema PJ · ambiente financeiro empresarial separado",
+      category: "Ajustes e conta",
+    });
+  }
+  return features;
+}
+
+function subscriptionPlanHighlightsMarkup(plan, visiblePlans) {
+  const highlights = subscriptionPlanHighlightFeatures(plan, visiblePlans);
+  if (!highlights.length) return "";
+  const hasPreviousLevel = visiblePlans.some((entry) => Number(entry.access_level) < Number(plan.access_level));
+  const summary = hasPreviousLevel ? "Novidades deste nível" : "Recursos deste plano";
+  const items = highlights.map((feature) => {
+    const isPj = feature.id === "profile.pj";
+    return `<li class="${isPj ? "is-pj-exclusive" : ""}"><span>${esc(feature.label)}</span>${isPj ? '<small>Exclusivo do nível 5</small>' : ""}</li>`;
+  }).join("");
+  return `<details class="subscription-plan-highlights"><summary><span>${summary}</span><small>${highlights.length} ${highlights.length === 1 ? "destaque" : "destaques"}</small></summary><ul>${items}</ul></details>`;
+}
+
 function subscriptionComparisonMarkup(plans) {
   const visiblePlans = plans || [];
   const grouped = new Map();
   for (const plan of visiblePlans) {
     for (const feature of plan.features || []) {
-      const category = feature.category || "Recursos";
+      const id = feature.id || feature.label;
+      const normalized = id === "profile.pj"
+        ? { ...feature, label: "Sistema PJ · ambiente financeiro empresarial separado", category: "Ajustes e conta" }
+        : feature;
+      const category = normalized.category || "Recursos";
       if (!grouped.has(category)) grouped.set(category, new Map());
-      grouped.get(category).set(feature.id || feature.label, feature);
+      grouped.get(category).set(id, normalized);
     }
   }
-  if (!grouped.size || !visiblePlans.length) return "";
+  const settings = "Ajustes e conta";
+  if (!grouped.has(settings)) grouped.set(settings, new Map());
+  grouped.get(settings).set("profile.pj", {
+    id: "profile.pj",
+    label: "Sistema PJ · ambiente financeiro empresarial separado",
+    category: settings,
+  });
+  if (!visiblePlans.length) return "";
 
-  const headers = visiblePlans.map((plan) =>
-    `<th scope="col"><span>${esc(plan.name)}</span><small>Nível ${Number(plan.access_level) || 1}</small></th>`,
-  ).join("");
+  const headers = visiblePlans.map((plan) => {
+    const level = Number(plan.access_level) || 1;
+    const highlights = subscriptionPlanHighlightFeatures(plan, visiblePlans);
+    const novelty = highlights.length
+      ? `<em class="subscription-compare-novelty">${highlights.length} ${highlights.length === 1 ? "novidade" : "novidades"}</em>`
+      : "";
+    const pj = level === 5 ? '<em class="subscription-compare-pj">PJ incluído</em>' : "";
+    return `<th scope="col"><span>${esc(plan.name)}</span><small>Nível ${level}</small>${novelty}${pj}</th>`;
+  }).join("");
   const rows = [...grouped.entries()].map(([category, features]) =>
-    `<tr class="subscription-comparison-category"><th colspan="${visiblePlans.length + 1}" scope="colgroup">${esc(category)}</th></tr>${[...features.entries()].map(([featureId, feature]) =>
-      `<tr><th scope="row">${esc(feature.label)}</th>${visiblePlans.map((plan) => {
-        const included = (plan.features || []).some((entry) => (entry.id || entry.label) === featureId);
+    `<tr class="subscription-comparison-category"><th colspan="${visiblePlans.length + 1}" scope="colgroup">${esc(category)}</th></tr>${[...features.entries()].map(([featureId, feature]) => {
+      const availableAt = featureId === "profile.pj"
+        ? 5
+        : Math.min(...visiblePlans
+          .filter((plan) => (plan.features || []).some((entry) => (entry.id || entry.label) === featureId))
+          .map((plan) => Number(plan.access_level) || 1));
+      const availability = featureId === "profile.pj"
+        ? '<small class="subscription-compare-availability is-exclusive">Exclusivo do nível 5</small>'
+        : Number.isFinite(availableAt)
+          ? `<small class="subscription-compare-availability">Disponível a partir do nível ${availableAt}</small>`
+          : "";
+      return `<tr class="${featureId === "profile.pj" ? "is-pj-exclusive" : ""}"><th scope="row"><span class="subscription-comparison-feature-label">${esc(feature.label)}</span>${availability}</th>${visiblePlans.map((plan) => {
+        const level = Number(plan.access_level) || 1;
+        const included = featureId === "profile.pj"
+          ? level === 5
+          : (plan.features || []).some((entry) => (entry.id || entry.label) === featureId);
         return `<td><span class="subscription-compare-mark ${included ? "included" : "not-included"}" aria-label="${included ? "Incluído" : "Não incluído"}">${included ? "✓" : "—"}</span></td>`;
-      }).join("")}</tr>`,
-    ).join("")}`,
+      }).join("")}</tr>`;
+    }).join("")}`,
   ).join("");
 
   return `<section class="subscription-comparison card" aria-labelledby="subscriptionComparisonTitle">
-    <div class="subscription-comparison-heading"><div><span class="eyebrow">COMPARAÇÃO</span><h3 id="subscriptionComparisonTitle">Veja o que cada plano inclui</h3><p>Os recursos acompanham o nível e as permissões configurados para sua conta.</p></div><span class="subscription-comparison-count">${grouped.size} categorias</span></div>
+    <div class="subscription-comparison-heading"><div><span class="eyebrow">COMPARAÇÃO</span><h3 id="subscriptionComparisonTitle">Veja o que cada plano inclui</h3><p>Os destaques mostram o que cada nível acrescenta. O sistema PJ é exclusivo do nível 5.</p></div><span class="subscription-comparison-count">${grouped.size} categorias</span></div>
+    <div class="subscription-comparison-pj-note"><span aria-hidden="true">▤</span><p><strong>Nível 5 · Completo e PJ</strong> libera o perfil da empresa, com ambiente financeiro separado do perfil pessoal.</p></div>
     <div class="subscription-comparison-scroll" tabindex="0" aria-label="Tabela comparativa dos recursos dos planos">
       <table class="subscription-comparison-table"><thead><tr><th scope="col">Recursos</th>${headers}</tr></thead><tbody>${rows}</tbody></table>
     </div>
   </section>`;
 }
-
 let subscriptionBillingPeriod = "monthly";
 let subscriptionAnnualMigrationState = { targetPlanId: "", days: null, discountPercent: null };
 
@@ -299,6 +362,7 @@ function subscriptionPageMarkup(snapshot) {
       ${priceMarkup}
       <p class="subscription-term">${plan.is_free ? `${plan.duration_days} dias de teste gratuito` : isAnnualPlan ? "Acesso por 1 ano (365 dias)" : "Acesso por 30 dias"}</p>
       <div class="subscription-plan-includes"><span class="subscription-plan-includes-icon" aria-hidden="true">✓</span><span><strong>${esc(resourceSummary)}</strong><small>Confira a comparação completa abaixo</small></span></div>
+      ${subscriptionPlanHighlightsMarkup(plan, plans)}
       <button class="btn ${disabled ? "secondary" : "primary"} subscription-plan-action" data-request-plan="${esc(plan.id)}" ${disabled ? "disabled" : ""}>${action}</button>
     </article>`;
   }).join("");
