@@ -172,6 +172,12 @@ Os relatórios consolidam entradas, despesas, saldo, posição patrimonial, desp
 - **PDF executivo:** toque em **Gerar PDF executivo** e escolha **Salvar como PDF** na janela de impressão do navegador. Inclui resumo, gráfico por pessoa e faturas fechadas/pagas encontradas no período.
 - **Exportação CSV/Excel:** baixa os dados tabulares do perfil atual para análise em planilha. Confira os valores e as datas antes de compartilhar o arquivo.
 
+### Relatórios gerenciais PJ
+
+No perfil empresarial, defina as datas inicial e final e, se desejar, filtre por cliente, fornecedor, centro de custo, categoria e situação. A comparação pode ser agrupada por mês, trimestre ou ano. **Previsto** soma lançamentos (inclusive os marcados como futuros) pela data de vencimento; **realizado** soma pagamentos e recebimentos pela data em que foram registrados; **em aberto** é o saldo restante no último dia do intervalo. Registros antigos sem data detalhada de pagamento são atribuídos ao vencimento.
+
+O envelhecimento divide pendências em vencimentos nos próximos sete dias, atrasos de até 30 dias e atrasos maiores. A margem estimada usa receitas recebidas e custos pagos vinculados ao mesmo cliente, serviço ou centro de custo; para isso, associe cliente e serviço às despesas quando fizer sentido. Tributos são somados conforme a classificação escolhida no lançamento e não representam apuração fiscal oficial. Use **Planilha CSV** para abrir os dados no Excel ou **Exportar PDF** para imprimir/salvar o relatório com período e identificação da empresa.
+
 ## 14. Ajustes
 
 ### Pessoas, clientes e categorias
