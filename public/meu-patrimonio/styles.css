@@ -28,13 +28,17 @@ body {
   color: #f5f6fd;
   position: fixed;
   inset: 0 auto 0 0;
-  padding: 26px 17px;
+  padding: 16px 14px;
   display: flex;
   flex-direction: column;
   z-index: 5;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
 }
 .brand {
-  height: 58px;
+  height: 50px;
+  flex: 0 0 auto;
   display: flex;
   gap: 11px;
   align-items: center;
@@ -70,27 +74,30 @@ body {
   letter-spacing: 1.45px;
   color: #848aa4;
   font-weight: 700;
-  margin: 20px 10px 8px;
+  line-height: 1.1;
+  margin: 13px 8px 5px;
 }
 .nav-item {
   border: 0;
   color: #bfc3d4;
   background: transparent;
-  padding: 9px 12px;
+  padding: 6px 10px;
   border-radius: 9px;
   width: 100%;
   text-align: left;
   display: flex;
   align-items: center;
-  gap: 12px;
-  font: 500 13px "DM Sans";
+  gap: 10px;
+  min-height: 32px;
+  line-height: 1.2;
+  font: 500 12px "DM Sans";
   cursor: pointer;
   margin: 1px 0;
 }
 .nav-item i {
   font-style: normal;
-  font-size: 18px;
-  width: 19px;
+  font-size: 16px;
+  width: 18px;
   text-align: center;
   color: #a6abc0;
 }
@@ -111,13 +118,14 @@ body {
   border-radius: 4px;
 }
 .side-bottom {
-  margin-top: auto;
+  margin-top: 12px;
+  flex: 0 0 auto;
 }
 .side-note {
   font-size: 10px;
   line-height: 1.5;
   color: #8d92a9;
-  margin: 15px 10px;
+  margin: 8px 8px;
 }
 .main {
   margin-left: 248px;
@@ -2626,6 +2634,7 @@ html {
     transform: none;
     pointer-events: auto;
     padding: 8px 12px;
+    overflow: visible;
     box-shadow: none;
     z-index: 22;
   }
