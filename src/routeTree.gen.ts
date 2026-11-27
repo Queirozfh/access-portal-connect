@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ApiPublicAdminUsersRouteImport } from './routes/api/public/admin-users'
 import { Route as ApiPublicAiUsageRouteImport } from './routes/api/public/ai-usage'
+import { Route as ApiPublicBusinessWorkspacesRouteImport } from './routes/api/public/business-workspaces'
 import { Route as ApiPublicDollarRateRouteImport } from './routes/api/public/dollar-rate'
 import { Route as ApiPublicFeatureAccessRouteImport } from './routes/api/public/feature-access'
 import { Route as ApiPublicFinancialStateRouteImport } from './routes/api/public/financial-state'
@@ -38,6 +39,12 @@ const ApiPublicAiUsageRoute = ApiPublicAiUsageRouteImport.update({
   path: '/api/public/ai-usage',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicBusinessWorkspacesRoute =
+  ApiPublicBusinessWorkspacesRouteImport.update({
+    id: '/api/public/business-workspaces',
+    path: '/api/public/business-workspaces',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPublicDollarRateRoute = ApiPublicDollarRateRouteImport.update({
   id: '/api/public/dollar-rate',
   path: '/api/public/dollar-rate',
@@ -95,6 +102,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/api/public/admin-users': typeof ApiPublicAdminUsersRoute
   '/api/public/ai-usage': typeof ApiPublicAiUsageRoute
+  '/api/public/business-workspaces': typeof ApiPublicBusinessWorkspacesRoute
   '/api/public/dollar-rate': typeof ApiPublicDollarRateRoute
   '/api/public/feature-access': typeof ApiPublicFeatureAccessRoute
   '/api/public/financial-state': typeof ApiPublicFinancialStateRoute
@@ -110,6 +118,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/api/public/admin-users': typeof ApiPublicAdminUsersRoute
   '/api/public/ai-usage': typeof ApiPublicAiUsageRoute
+  '/api/public/business-workspaces': typeof ApiPublicBusinessWorkspacesRoute
   '/api/public/dollar-rate': typeof ApiPublicDollarRateRoute
   '/api/public/feature-access': typeof ApiPublicFeatureAccessRoute
   '/api/public/financial-state': typeof ApiPublicFinancialStateRoute
@@ -126,6 +135,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/api/public/admin-users': typeof ApiPublicAdminUsersRoute
   '/api/public/ai-usage': typeof ApiPublicAiUsageRoute
+  '/api/public/business-workspaces': typeof ApiPublicBusinessWorkspacesRoute
   '/api/public/dollar-rate': typeof ApiPublicDollarRateRoute
   '/api/public/feature-access': typeof ApiPublicFeatureAccessRoute
   '/api/public/financial-state': typeof ApiPublicFinancialStateRoute
@@ -143,6 +153,7 @@ export interface FileRouteTypes {
     | '/'
     | '/api/public/admin-users'
     | '/api/public/ai-usage'
+    | '/api/public/business-workspaces'
     | '/api/public/dollar-rate'
     | '/api/public/feature-access'
     | '/api/public/financial-state'
@@ -158,6 +169,7 @@ export interface FileRouteTypes {
     | '/'
     | '/api/public/admin-users'
     | '/api/public/ai-usage'
+    | '/api/public/business-workspaces'
     | '/api/public/dollar-rate'
     | '/api/public/feature-access'
     | '/api/public/financial-state'
@@ -173,6 +185,7 @@ export interface FileRouteTypes {
     | '/'
     | '/api/public/admin-users'
     | '/api/public/ai-usage'
+    | '/api/public/business-workspaces'
     | '/api/public/dollar-rate'
     | '/api/public/feature-access'
     | '/api/public/financial-state'
@@ -189,6 +202,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   ApiPublicAdminUsersRoute: typeof ApiPublicAdminUsersRoute
   ApiPublicAiUsageRoute: typeof ApiPublicAiUsageRoute
+  ApiPublicBusinessWorkspacesRoute: typeof ApiPublicBusinessWorkspacesRoute
   ApiPublicDollarRateRoute: typeof ApiPublicDollarRateRoute
   ApiPublicFeatureAccessRoute: typeof ApiPublicFeatureAccessRoute
   ApiPublicFinancialStateRoute: typeof ApiPublicFinancialStateRoute
@@ -222,6 +236,13 @@ declare module '@tanstack/react-router' {
       path: '/api/public/ai-usage'
       fullPath: '/api/public/ai-usage'
       preLoaderRoute: typeof ApiPublicAiUsageRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/business-workspaces': {
+      id: '/api/public/business-workspaces'
+      path: '/api/public/business-workspaces'
+      fullPath: '/api/public/business-workspaces'
+      preLoaderRoute: typeof ApiPublicBusinessWorkspacesRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/public/dollar-rate': {
@@ -301,6 +322,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   ApiPublicAdminUsersRoute: ApiPublicAdminUsersRoute,
   ApiPublicAiUsageRoute: ApiPublicAiUsageRoute,
+  ApiPublicBusinessWorkspacesRoute: ApiPublicBusinessWorkspacesRoute,
   ApiPublicDollarRateRoute: ApiPublicDollarRateRoute,
   ApiPublicFeatureAccessRoute: ApiPublicFeatureAccessRoute,
   ApiPublicFinancialStateRoute: ApiPublicFinancialStateRoute,

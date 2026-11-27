@@ -7,7 +7,8 @@ let cloudSession = null,
   accountRow = "",
   accessBusy = false,
   activeFinanceProfile = "PF",
-  financeProfileStates = {};
+  financeProfileStates = {},
+  activeBusinessWorkspaceId = null;
 let pendingSyncBusy = false;
 let stateUpdatedAt = null;
 let stateConflict = false;
@@ -111,13 +112,17 @@ function convertState(source) {
   return result;
 }
 function financeProfileMapKey() {
-  return "cdm-finance-profiles-" + authUser.id;
+  return "cdm-finance-profiles-" + authUser.id + (activeBusinessWorkspaceId ? "-workspace-" + activeBusinessWorkspaceId : "");
 }
 function financeProfileKey(profile = activeFinanceProfile) {
-  return "meu-patrimonio-" + authUser.id + "-" + profile;
+  return "meu-patrimonio-" + authUser.id + (activeBusinessWorkspaceId ? "-workspace-" + activeBusinessWorkspaceId : "") + "-" + profile;
+}
+function stateScopeHeaders(workspaceId = activeBusinessWorkspaceId) {
+  return workspaceId ? { "X-Business-Workspace-Id": workspaceId } : {};
 }
 function serializeState() {
   financeProfileStates[activeFinanceProfile] = db;
+  if (activeBusinessWorkspaceId) return { v: originalState?.v, financeProfiles: { PJ: db }, patrimonioApp: db };
   return {
     ...(originalState || {}),
     financeProfiles: { ...financeProfileStates },
@@ -125,14 +130,15 @@ function serializeState() {
   };
 }
 async function readCloudState() {
-  let response = await fetch("/api/public/financial-state", { headers: { Authorization: "Bearer " + (await cloudToken()) } });
+  accountRow = activeBusinessWorkspaceId ? "business-" + activeBusinessWorkspaceId + "-" + authUser.id : authUser.id === OWNER_ID ? "main" : authUser.id;
+  let response = await fetch("/api/public/financial-state", { headers: { Authorization: "Bearer " + (await cloudToken()), ...stateScopeHeaders() } });
   if (!response.ok) throw Error("Não foi possível carregar os dados online.");
   let result = await response.json();
   let source = result.state || {};
   stateUpdatedAt = result.updated_at || null;
   stateConflict = false;
   originalState = source;
-  activeFinanceProfile = localStorage.getItem("cdm-active-finance-profile-" + authUser.id) === "PJ" ? "PJ" : "PF";
+  activeFinanceProfile = activeBusinessWorkspaceId ? "PJ" : localStorage.getItem("cdm-active-finance-profile-" + authUser.id) === "PJ" ? "PJ" : "PF";
   KEY = financeProfileKey();
   let queued = localStorage.getItem("cdm-pending-state-" + accountRow);
   if (queued) {
@@ -149,11 +155,12 @@ async function readCloudState() {
       if (pending.json) source = JSON.parse(pending.json);
     } catch {}
   }
-  financeProfileStates =
-    source.financeProfiles && typeof source.financeProfiles === "object"
+  financeProfileStates = activeBusinessWorkspaceId
+    ? { PJ: source.financeProfiles?.PJ || source.patrimonioApp || source }
+    : source.financeProfiles && typeof source.financeProfiles === "object"
       ? { ...source.financeProfiles }
       : { PF: source.patrimonioApp || source };
-  if (!financeProfileStates.PF) financeProfileStates.PF = emptyState(authUser.name);
+  if (!activeBusinessWorkspaceId && !financeProfileStates.PF) financeProfileStates.PF = emptyState(authUser.name);
   if (!financeProfileStates.PJ) financeProfileStates.PJ = emptyState(authUser.name);
   originalState = source;
   db = convertState(financeProfileStates[activeFinanceProfile]);
@@ -182,7 +189,7 @@ function flushPendingState() {
           }),
           response = await fetch("/api/public/financial-state", {
             method: "POST",
-            headers: { "Content-Type": "application/json", Authorization: "Bearer " + (await cloudToken()) },
+          headers: { "Content-Type": "application/json", Authorization: "Bearer " + (await cloudToken()), ...stateScopeHeaders(marker.workspace_id || null) },
             body,
           });
         if (response.status === 409) {
@@ -237,7 +244,7 @@ function save() {
     updatedAt = new Date().toISOString();
   localStorage.setItem(KEY, JSON.stringify(db));
   localStorage.setItem(financeProfileMapKey(), JSON.stringify(financeProfileStates));
-  localStorage.setItem(queueKey, JSON.stringify({ id: row, updated_at: updatedAt, expected_updated_at: stateUpdatedAt, json: JSON.stringify(payload) }));
+  localStorage.setItem(queueKey, JSON.stringify({ id: row, workspace_id: activeBusinessWorkspaceId, updated_at: updatedAt, expected_updated_at: stateUpdatedAt, json: JSON.stringify(payload) }));
   if (stateConflict) {
     showSyncConflict();
     return;

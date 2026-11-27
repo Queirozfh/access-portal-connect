@@ -93,3 +93,10 @@ body[data-theme="dark"] .subscription-plan-highlights li small,body[data-theme="
 body[data-theme="dark"] .subscription-comparison-pj-note{background:rgba(195,157,96,.08);border-color:rgba(195,157,96,.25)}
 body[data-theme="dark"] .subscription-comparison-pj-note>span{color:#d1ad6c}
 @media(max-width:680px){.subscription-comparison-pj-note{margin:0 14px 12px}.subscription-plan-highlights li{flex-wrap:wrap}.subscription-plan-highlights li small{margin-left:20px}}
+
+.admin-plan-members small{display:block;margin-top:5px;color:var(--muted);font-size:10px;line-height:1.45}
+.subscription-business-seat-note{display:grid;gap:3px;margin:10px 0 14px;padding:10px 12px;border:1px solid rgba(195,157,96,.3);border-radius:11px;background:rgba(195,157,96,.07)}
+.subscription-business-seat-note strong{color:var(--ink);font-size:10px}
+.subscription-business-seat-note span{color:var(--muted);font-size:10px}
+body[data-theme="dark"] .subscription-business-seat-note{background:rgba(195,157,96,.08);border-color:rgba(195,157,96,.24)}
+@media(max-width:560px){.admin-plan-members{grid-column:span 1}}
