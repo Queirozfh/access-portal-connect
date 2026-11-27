@@ -179,7 +179,7 @@ function adminPlansMarkup() {
       <div class="admin-plan-fields">
         <label class="field"><span>Nome</span><input name="name" maxlength="80" required placeholder="Ex.: Essencial"></label>
         <label class="field"><span>Preço por período (R$)</span><input name="price" type="text" inputmode="decimal" autocomplete="off" placeholder="Ex.: 29,90" required></label>
-        <label class="field"><span>Duração (dias)</span><input name="duration_days" type="number" min="1" max="3650" step="1" required value="30"></label>
+        <label class="field"><span>Duração (dias)</span><input name="duration_days" type="text" inputmode="numeric" pattern="[0-9]*" autocomplete="off" placeholder="Ex.: 30" required value="30"></label>
         <label class="field"><span>Nível de acesso</span><select name="access_level">${[1, 2, 3, 4, 5].map((level) => `<option value="${level}">Nível ${level} · ${["Básico", "Essencial", "Intermediário", "Avançado", "Completo"][level - 1]}</option>`).join("")}</select></label>
         <label class="field admin-plan-description"><span>Descrição para o usuário</span><textarea name="description" maxlength="500" rows="2" placeholder="Resumo do que este plano oferece"></textarea></label>
         <label class="admin-plan-active"><input type="checkbox" name="is_active" checked> Exibir para novos usuários</label>
@@ -387,7 +387,8 @@ document.addEventListener("submit", async (event) => {
   const name = String(values.name || "").trim();
   const price = parsePlanPrice(values.price);
   const priceCents = isFree ? 0 : Math.round(price * 100);
-  const durationDays = Number(values.duration_days);
+  const durationText = String(values.duration_days || "").trim();
+  const durationDays = /^\d+$/.test(durationText) ? Number(durationText) : Number.NaN;
   const status = document.querySelector("#adminPlanStatus");
   const validationError = !name
     ? "Informe o nome do plano."
