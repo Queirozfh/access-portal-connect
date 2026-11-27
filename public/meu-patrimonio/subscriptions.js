@@ -64,6 +64,38 @@ function planFeatureMarkup(features) {
   ).join("");
 }
 
+function subscriptionComparisonMarkup(plans) {
+  const visiblePlans = plans || [];
+  const grouped = new Map();
+  for (const plan of visiblePlans) {
+    for (const feature of plan.features || []) {
+      const category = feature.category || "Recursos";
+      if (!grouped.has(category)) grouped.set(category, new Map());
+      grouped.get(category).set(feature.id || feature.label, feature);
+    }
+  }
+  if (!grouped.size || !visiblePlans.length) return "";
+
+  const headers = visiblePlans.map((plan) =>
+    `<th scope="col"><span>${esc(plan.name)}</span><small>Nível ${Number(plan.access_level) || 1}</small></th>`,
+  ).join("");
+  const rows = [...grouped.entries()].map(([category, features]) =>
+    `<tr class="subscription-comparison-category"><th colspan="${visiblePlans.length + 1}" scope="colgroup">${esc(category)}</th></tr>${[...features.entries()].map(([featureId, feature]) =>
+      `<tr><th scope="row">${esc(feature.label)}</th>${visiblePlans.map((plan) => {
+        const included = (plan.features || []).some((entry) => (entry.id || entry.label) === featureId);
+        return `<td><span class="subscription-compare-mark ${included ? "included" : "not-included"}" aria-label="${included ? "Incluído" : "Não incluído"}">${included ? "✓" : "—"}</span></td>`;
+      }).join("")}</tr>`,
+    ).join("")}`,
+  ).join("");
+
+  return `<section class="subscription-comparison card" aria-labelledby="subscriptionComparisonTitle">
+    <div class="subscription-comparison-heading"><div><span class="eyebrow">COMPARAÇÃO</span><h3 id="subscriptionComparisonTitle">Veja o que cada plano inclui</h3><p>Os recursos acompanham o nível e as permissões configurados para sua conta.</p></div><span class="subscription-comparison-count">${grouped.size} categorias</span></div>
+    <div class="subscription-comparison-scroll" tabindex="0" aria-label="Tabela comparativa dos recursos dos planos">
+      <table class="subscription-comparison-table"><thead><tr><th scope="col">Recursos</th>${headers}</tr></thead><tbody>${rows}</tbody></table>
+    </div>
+  </section>`;
+}
+
 function subscriptionPageMarkup(snapshot) {
   const subscription = snapshot.subscription || {};
   const currentPlan = subscription.currentPlan;
@@ -85,7 +117,9 @@ function subscriptionPageMarkup(snapshot) {
   const pending = pendingPlan
     ? `<div class="subscription-pending"><strong>Solicitação registrada: ${esc(pendingPlan.name)}</strong><span>O plano continuará pendente até que exista confirmação de pagamento.</span><small>Solicitado em ${esc(subscriptionDate(subscription.pendingRequestedAt))}</small></div>`
     : "";
-  const cards = (snapshot.plans || []).map((plan) => {
+  const plans = snapshot.plans || [];
+  const highestLevel = Math.max(0, ...plans.filter((plan) => !plan.is_free).map((plan) => Number(plan.access_level) || 0));
+  const cards = plans.map((plan) => {
     const isCurrent = currentPlan?.id === plan.id && ["active", "trialing"].includes(status) && !expired;
     const isPending = pendingPlan?.id === plan.id;
     const action = plan.is_free
@@ -96,19 +130,22 @@ function subscriptionPageMarkup(snapshot) {
           ? "Solicitação pendente"
           : "Solicitar plano";
     const disabled = Boolean(plan.is_free || isCurrent || isPending || status === "admin");
-    return `<article class="subscription-plan-card ${isCurrent ? "is-current" : ""} ${plan.is_free ? "is-free" : ""}">
+    const isHighest = !plan.is_free && Number(plan.access_level) === highestLevel;
+    return `<article class="subscription-plan-card ${isCurrent ? "is-current" : ""} ${isHighest ? "is-highest" : ""} ${plan.is_free ? "is-free" : ""}">
+      ${isHighest ? '<span class="subscription-plan-ribbon">Nível mais completo</span>' : ""}
       <div class="subscription-plan-heading"><div><span class="plan-level-pill">Nível ${plan.access_level}</span><h3>${esc(plan.name)}</h3></div>${isCurrent ? '<span class="plan-current-badge">Atual</span>' : ""}</div>
       <p class="subscription-plan-description">${esc(plan.description || "Acesso financeiro pessoal com recursos definidos por nível.")}</p>
       <div class="subscription-price">${plan.is_free ? "Gratuito" : esc(subscriptionMoney(plan.price_cents))}<small>${plan.is_free ? "" : `por ${plan.duration_days} dias`}</small></div>
       <p class="subscription-term">${plan.is_free ? `${plan.duration_days} dias de teste gratuito` : `Acesso por ${plan.duration_days} dias`}</p>
-      <details class="plan-features"><summary>Funções liberadas (${plan.features?.length || 0})</summary>${planFeatureMarkup(plan.features)}</details>
+      <div class="subscription-plan-includes"><span class="subscription-plan-includes-icon" aria-hidden="true">✓</span><span><strong>${plan.features?.length || 0} recursos disponíveis</strong><small>Confira a comparação completa abaixo</small></span></div>
       <button class="btn ${disabled ? "secondary" : "primary"} subscription-plan-action" data-request-plan="${esc(plan.id)}" ${disabled ? "disabled" : ""}>${action}</button>
     </article>`;
   }).join("");
-  return `<section class="subscription-intro"><div class="eyebrow">CONTA PESSOAL</div><h2>Planos do Meu Patrimônio</h2><p>Compare o período, nível de acesso e funções disponíveis antes de escolher.</p></section>
+  return `<section class="subscription-intro"><div class="subscription-intro-copy"><span class="eyebrow">PLANOS PARA SUA CONTA</span><h2>Escolha o nível ideal para você</h2><p>Compare os períodos e recursos. Seu controle financeiro continua organizado no padrão do Meu Patrimônio.</p></div><span class="subscription-intro-mark" aria-hidden="true">✦</span></section>
     <section class="subscription-current-card"><div><span class="subscription-status-label">${esc(subscriptionStatusText(status))}</span><div class="subscription-current-info">${current}</div><p>${statusCopy}</p></div>${pending}</section>
-    <div class="subscription-payment-notice"><strong>Pagamento online ainda não configurado</strong><span>Você pode registrar uma solicitação de plano pago. Ela não gera cobrança nem libera recursos até a configuração e confirmação do pagamento.</span></div>
-    <div class="subscription-plan-grid">${cards || '<div class="empty">Nenhum plano disponível no momento.</div>'}</div>`;
+    <div class="subscription-payment-notice"><span class="subscription-payment-icon" aria-hidden="true">ⓘ</span><div><strong>Solicitação de plano</strong><span>O pagamento online ainda não está configurado. Solicitar um plano não gera cobrança nem libera recursos; a ativação depende de confirmação do administrador.</span></div></div>
+    <div class="subscription-plan-grid">${cards || '<div class="empty">Nenhum plano disponível no momento.</div>'}</div>
+    ${subscriptionComparisonMarkup(plans)}`;
 }
 
 async function loadSubscriptionPage() {
