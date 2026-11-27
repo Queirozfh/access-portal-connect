@@ -3544,3 +3544,9 @@ body[data-theme="dark"] .access-actions .ai-limit-input {
   outline: 2px solid var(--gold, #bd9657);
   outline-offset: 2px;
 }
+
+/* The AI usage limit is an admin setting, not a financial balance; keep it visible in privacy mode. */
+body.privacy-mode input[type="number"].ai-limit-input {
+  -webkit-text-security: none !important;
+  text-security: none !important;
+}
