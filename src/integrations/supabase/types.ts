@@ -119,6 +119,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      create_daily_financial_backup_for_account: { Args: { p_account_id: string }; Returns: undefined }
       consume_auth_attempt: { Args: { p_ip_hash: string; p_kind: string }; Returns: boolean }
       list_daily_financial_backups: {
         Args: Record<PropertyKey, never>

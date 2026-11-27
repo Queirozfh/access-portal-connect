@@ -16,6 +16,8 @@ export const Route = createFileRoute('/api/public/financial-state')({
         const features = new Set(isAdmin ? ['admin.all', 'profile.pj'] : (await accessPolicyForUser(auth.userId)).features);
         const { supabaseAdmin } = await import('@/integrations/supabase/client.server');
         const id = auth.userId === ADMIN_ID ? 'main' : auth.userId;
+        const { error: backupError } = await supabaseAdmin.rpc('create_daily_financial_backup_for_account', { p_account_id: id });
+        if (backupError) console.error('[Daily backup] Could not create the account snapshot.', backupError);
         const { data, error } = await supabaseAdmin.from('app_state').select('json, updated_at').eq('id', id).maybeSingle();
         if (error) return json({ error: 'Não foi possível carregar os dados online.' }, 503);
         const state = data ? JSON.parse(data.json) : {};
