@@ -114,7 +114,7 @@ async function loadSubscriptionPage() {
 
 function adminPlansMarkup() {
   return `<div class="admin-plan-toolbar"><div><h2>Planos comerciais PF</h2><p>Defina preço por período, duração e nível de funções de cada plano.</p></div><button class="btn primary" data-plan-new>＋ Novo plano pago</button></div>
-    <form id="adminPlanForm" class="admin-plan-form" hidden>
+    <form id="adminPlanForm" class="admin-plan-form" hidden onsubmit="return false">
       <input type="hidden" name="id"><input type="hidden" name="is_free">
       <div class="admin-plan-form-heading"><strong id="adminPlanFormTitle">Novo plano</strong><button type="button" class="mini-btn" data-plan-cancel>Fechar</button></div>
       <div class="admin-plan-fields">
