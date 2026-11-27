@@ -16,7 +16,7 @@ function subscriptionsCall(method = "GET", body = null) {
       ...(controller ? { signal: controller.signal } : {}),
     });
     const result = await response.json().catch(() => ({}));
-    if (!response.ok) throw Error(result.error || "Não foi possível consultar os planos.");
+    if (!response.ok) throw Error(result.error || `Não foi possível concluir a operação (HTTP ${response.status}).`);
     return result;
   };
   if (!controller) return request();

@@ -29,6 +29,15 @@ function planSlug(name: string) {
     .replace(/^-|-$/g, "") || "plano"}-${crypto.randomUUID().slice(0, 8)}`;
 }
 
+function planWriteErrorMessage(error: { code?: string } | null, action: "criar" | "atualizar") {
+  const code = error?.code || "desconhecido";
+  console.error(`[subscriptions] Could not ${action} plan`, { code });
+  if (code === "23505") return "Já existe um plano com estes dados. Atualize o nome e tente novamente.";
+  if (code === "42501") return "O servidor não tem permissão para salvar planos. Verifique a configuração administrativa do banco.";
+  if (code === "42P01" || code === "PGRST205") return "A tabela de planos não está disponível no banco. A migração de planos precisa ser aplicada.";
+  return `Não foi possível ${action} o plano (código ${code}). Tente novamente; se persistir, informe este código ao administrador.`;
+}
+
 async function withFeatures(plan: PlanRow) {
   const enabled = new Set(await configuredAccessFeatures(plan.access_level));
   const category = new Map<string, string>();
@@ -224,7 +233,7 @@ export const Route = createFileRoute("/api/public/subscriptions")({
                   updated_at: now,
                 })
                 .eq("id", id);
-              if (error) return json({ error: "Não foi possível salvar as alterações do plano." }, 500);
+              if (error) return json({ error: planWriteErrorMessage(error, "atualizar") }, 500);
               return json({ ok: true });
             }
             const { error } = await supabaseAdmin.from("subscription_plans").insert({
@@ -236,7 +245,7 @@ export const Route = createFileRoute("/api/public/subscriptions")({
               access_level: accessLevel,
               is_active: isActive,
             });
-            if (error) return json({ error: "Não foi possível criar o plano." }, 500);
+            if (error) return json({ error: planWriteErrorMessage(error, "criar") }, 500);
             return json({ ok: true });
           }
           if (body.action === "archive-plan") {
