@@ -8,6 +8,12 @@ import { rejectCrossSiteRequest } from '@/lib/session-cookie.server';
 const json = (body: unknown, status = 200) => Response.json(body, { status, headers: { 'Cache-Control': 'no-store' } });
 const ADMIN_ID = 'ad46a5e7-af23-4cff-b190-ea6b6140013d';
 
+// Personal finance is always scoped to the verified session. A workspace
+// membership never changes this identifier or grants access to its owner's row.
+function personalStateIdForUser(userId: string) {
+  return userId === ADMIN_ID ? 'main' : userId;
+}
+
 export const Route = createFileRoute('/api/public/financial-state')({
   server: { handlers: {
     GET: async ({ request }) => {
@@ -27,14 +33,19 @@ export const Route = createFileRoute('/api/public/financial-state')({
           if (error) return json({ error: 'Não foi possível carregar os dados da empresa.' }, 503);
           if (!data) return json({ error: 'Os dados financeiros da empresa ainda não foram inicializados.' }, 404);
           const stored = JSON.parse(data.json);
-          const company = stored?.financeProfiles?.PJ || stored?.patrimonioApp || stored;
+          // Only the PJ branch is ever returned from a shared workspace. Do not
+          // fall back to patrimonioApp or the raw row: older aliases may contain
+          // a personal profile if a previous writer serialized the wrong scope.
+          const company = stored?.financeProfiles?.PJ;
+          if (!company || typeof company !== 'object' || Array.isArray(company))
+            return json({ error: 'O espaço não possui um perfil PJ isolado; os dados foram bloqueados.' }, 503);
           const isolatedState = { v: stored?.v, financeProfiles: { PJ: company }, patrimonioApp: {} };
           return json({ state: sanitizeFinancialState(isolatedState, new Set(context.features)), updated_at: data.updated_at, workspace: { id: context.workspace.id, name: context.workspace.name, role: context.role } });
         }
         const isAdmin = auth.userId === ADMIN_ID || (await auth.client.rpc('has_role', { _user_id: auth.userId, _role: 'admin' })).data === true;
         const features = new Set(isAdmin ? ['admin.all', 'profile.pj'] : (await accessPolicyForUser(auth.userId)).features);
         const { supabaseAdmin } = await import('@/integrations/supabase/client.server');
-        const id = auth.userId === ADMIN_ID ? 'main' : auth.userId;
+        const id = personalStateIdForUser(auth.userId);
         const { error: backupError } = await supabaseAdmin.rpc('create_daily_financial_backup_for_account', { p_account_id: id });
         if (backupError) console.error('[Daily backup] Could not create the account snapshot.', backupError);
         const { data, error } = await supabaseAdmin.from('app_state').select('json, updated_at').eq('id', id).maybeSingle();
@@ -71,7 +82,9 @@ export const Route = createFileRoute('/api/public/financial-state')({
       try {
         if (workspaceId) {
           if (!/^[0-9a-f-]{36}$/i.test(workspaceId)) return json({ error: 'Espaço empresarial inválido.' }, 400);
-          if (incomingProfiles?.['PF'] && Object.keys(incomingProfiles['PF']).length)
+          if (!incomingProfiles?.['PJ'])
+            return json({ error: 'O espaço empresarial aceita somente dados do perfil PJ.' }, 400);
+          if (incomingProfiles['PF'] !== undefined)
             return json({ error: 'O espaço empresarial não pode receber dados do perfil pessoal.' }, 400);
           const context = await businessWorkspaceContext(workspaceId, auth.userId);
           if (!context) return json({ error: 'Você não tem acesso a este espaço empresarial.' }, 403);
@@ -86,9 +99,11 @@ export const Route = createFileRoute('/api/public/financial-state')({
             return json({ error: 'Outra pessoa salvou alterações. Seus dados locais foram preservados; recarregue antes de continuar.', conflict: true, updated_at: current.updated_at }, 409);
           const stored = JSON.parse(current.json) as Record<string, any>;
           const storedProfiles = stored['financeProfiles'] as Record<string, any> | undefined;
-          const companyBefore = storedProfiles?.['PJ'] || stored['patrimonioApp'] || stored;
+          const companyBefore = storedProfiles?.['PJ'];
+          if (!companyBefore || typeof companyBefore !== 'object' || Array.isArray(companyBefore))
+            return json({ error: 'O espaço não possui um perfil PJ isolado; os dados foram bloqueados.' }, 503);
           const oldState = { v: stored['v'], financeProfiles: { PJ: companyBefore }, patrimonioApp: {} };
-          const companyIncoming = incomingProfiles?.['PJ'] || incoming['patrimonioApp'] || incoming;
+          const companyIncoming = incomingProfiles['PJ'];
           const isolatedIncoming = { v: incoming['v'], financeProfiles: { PJ: companyIncoming }, patrimonioApp: {} };
           const merged = mergeFinancialState(oldState, isolatedIncoming, features);
           const mergedProfiles = merged['financeProfiles'] as Record<string, any> | undefined;
@@ -111,7 +126,7 @@ export const Route = createFileRoute('/api/public/financial-state')({
         const isAdmin = auth.userId === ADMIN_ID || role.data === true;
         const features = new Set(isAdmin ? ['admin.all', 'profile.pj'] : (await accessPolicyForUser(auth.userId)).features);
         const { supabaseAdmin } = await import('@/integrations/supabase/client.server');
-        const id = auth.userId === ADMIN_ID ? 'main' : auth.userId;
+        const id = personalStateIdForUser(auth.userId);
         const { data: current, error: readError } = await supabaseAdmin.from('app_state').select('json, updated_at').eq('id', id).maybeSingle();
         if (readError) return json({ error: 'Não foi possível ler a versão atual dos dados.' }, 503);
         if (!current) return json({ error: 'A conta ainda não possui um estado financeiro inicial.' }, 409);

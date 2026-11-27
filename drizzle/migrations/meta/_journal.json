@@ -78,6 +78,13 @@
       "when": 1795800655478,
       "tag": "0011_business_workspace_admin_level_grants",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1795800655479,
+      "tag": "0012_business_workspace_pj_isolation",
+      "breakpoints": true
     }
   ]
 }
