@@ -234,12 +234,12 @@ async function loadAdminPlans() {
   if (!root) return;
   root.innerHTML = '<p class="empty">Carregando planos…</p>';
   try {
-    const renameResult = await subscriptionsCall("POST", { action: "rename-legacy-duplicate-plans" });
+    const syncResult = await subscriptionsCall("POST", { action: "sync-commercial-plans" });
     const result = await subscriptionsCall();
     if (!document.querySelector("#adminPlanList")) return;
     renderAdminPlanList(result.plans);
-    if (Number(renameResult.renamed) > 0)
-      toast(`${renameResult.renamed} planos renomeados com sucesso`);
+    if (Number(syncResult.updated) > 0)
+      toast(`${syncResult.updated} planos atualizados com sucesso`);
   } catch (error) {
     root.innerHTML = `<div class="auth-error">${esc(error.message)}</div>`;
   }

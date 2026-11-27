@@ -197,15 +197,15 @@ export const Route = createFileRoute("/api/public/subscriptions")({
           }
 
           if (!isAdmin) return json({ error: "Acesso negado." }, 403);
-          if (body.action === "rename-legacy-duplicate-plans") {
+          if (body.action === "sync-commercial-plans") {
             const renamedPlans = [
               ["Cópia de Free", "Essencial"],
               ["Cópia de Cópia de Free", "Intermediário"],
               ["Cópia de Cópia de Cópia de Free", "Avançado"],
               ["Cópia de Cópia de Cópia de Cópia de Free", "Completo e PJ"],
             ];
-            let renamed = 0;
             const now = new Date().toISOString();
+            const updatedIds = new Set<string>();
             for (const [oldName, newName] of renamedPlans) {
               const { data, error } = await supabaseAdmin
                 .from("subscription_plans")
@@ -216,9 +216,56 @@ export const Route = createFileRoute("/api/public/subscriptions")({
                 console.error("[subscriptions] Could not rename legacy duplicated plan", { code: error.code || "unknown" });
                 return json({ error: "Não foi possível atualizar os nomes dos planos. Tente novamente." }, 500);
               }
-              renamed += data?.length || 0;
+              for (const row of data || []) updatedIds.add(row.id);
             }
-            return json({ ok: true, renamed });
+
+            const standardPlans = [
+              { name: "Free", accessLevel: 1, priceCents: 0, description: "", isFree: true },
+              { name: "Essencial", accessLevel: 2, priceCents: 1990, description: "Acesso aos recursos do nível 2 por 30 dias.", isFree: false },
+              { name: "Intermediário", accessLevel: 3, priceCents: 3290, description: "Acesso aos recursos do nível 3 por 30 dias.", isFree: false },
+              { name: "Avançado", accessLevel: 4, priceCents: 4290, description: "Acesso aos recursos do nível 4 por 30 dias.", isFree: false },
+              { name: "Completo e PJ", accessLevel: 5, priceCents: 4990, description: "Acesso aos recursos do nível 5, incluindo Conta PJ, por 30 dias.", isFree: false },
+            ];
+            for (const plan of standardPlans) {
+              const { data: rows, error: readError } = await supabaseAdmin
+                .from("subscription_plans")
+                .select("id, access_level, price_cents, duration_days, description, is_free, is_active")
+                .eq("name", plan.name);
+              if (readError) {
+                console.error("[subscriptions] Could not read commercial plan", { code: readError.code || "unknown" });
+                return json({ error: "Não foi possível conferir a configuração dos planos. Tente novamente." }, 500);
+              }
+              for (const row of rows || []) {
+                const needsUpdate = plan.isFree
+                  ? row.access_level !== 1 || row.price_cents !== 0 || !row.is_free || !row.is_active
+                  : row.access_level !== plan.accessLevel ||
+                    row.price_cents !== plan.priceCents ||
+                    row.duration_days !== 30 ||
+                    row.description !== plan.description ||
+                    row.is_free;
+                if (!needsUpdate) continue;
+                const planUpdate = plan.isFree
+                  ? { access_level: 1, price_cents: 0, is_free: true, is_active: true, updated_at: now }
+                  : {
+                      access_level: plan.accessLevel,
+                      price_cents: plan.priceCents,
+                      duration_days: 30,
+                      description: plan.description,
+                      is_free: false,
+                      updated_at: now,
+                    };
+                const { error: updateError } = await supabaseAdmin
+                  .from("subscription_plans")
+                  .update(planUpdate)
+                  .eq("id", row.id);
+                if (updateError) {
+                  console.error("[subscriptions] Could not configure commercial plan", { code: updateError.code || "unknown" });
+                  return json({ error: "Não foi possível salvar os níveis e preços dos planos. Tente novamente." }, 500);
+                }
+                updatedIds.add(row.id);
+              }
+            }
+            return json({ ok: true, updated: updatedIds.size });
           }
           if (body.action === "save-plan") {
             const id = String(body.id || "");
