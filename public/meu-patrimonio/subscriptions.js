@@ -210,7 +210,21 @@ function mountAdminTabs() {
   content.insertAdjacentHTML("beforeend", adminTabsMarkup());
   content.append(accessPane, plansPane);
   const planForm = plansPane.querySelector("#adminPlanForm");
-  planForm?.addEventListener("submit", saveAdminPlanForm);
+  if (planForm) {
+    // Keep mouse/touch activation reliable inside embedded Lovable previews.
+    // The click handler prevents a duplicate native submit; Enter still submits the form.
+    planForm.onsubmit = saveAdminPlanForm;
+    const submit = planForm.querySelector('[type="submit"]');
+    if (submit) {
+      submit.onclick = (event) => {
+        event.preventDefault();
+        void saveAdminPlanForm({
+          preventDefault() {},
+          target: planForm,
+        });
+      };
+    }
+  }
 }
 
 function renderAdminPlanList(plans) {
