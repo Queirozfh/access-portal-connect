@@ -41,8 +41,17 @@ export async function businessPlanForOwner(ownerUserId: string) {
   if (authError || !authData.user) throw authError || new Error('Titular do espaço não encontrado.');
   const metadata = authData.user.app_metadata as { access_level?: number; expires_at?: string } | undefined;
   const metadataExpiryActive = !metadata?.expires_at || Date.parse(metadata.expires_at) > Date.now();
+  const adminAssignedLevel = Number(metadata?.access_level);
+
+  // app_metadata.access_level is written by the admin access controls. A direct
+  // level-5 grant remains authoritative even if an older subscription row has
+  // since expired; the separate admin expiry still limits that grant.
+  if (adminAssignedLevel === 5) {
+    return { active: metadataExpiryActive, accessLevel: 5, memberLimit: 5, admin: false };
+  }
+
   if (!subscription) {
-    const accessLevel = Number(metadata?.access_level) || defaultUserAccessLevel(authData.user.created_at);
+    const accessLevel = adminAssignedLevel || defaultUserAccessLevel(authData.user.created_at);
     return {
       active: accessLevel === 5 && metadataExpiryActive,
       accessLevel,

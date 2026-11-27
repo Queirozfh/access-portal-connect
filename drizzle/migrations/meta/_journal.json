@@ -85,6 +85,13 @@
       "when": 1795800655479,
       "tag": "0012_business_workspace_pj_isolation",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1795860000000,
+      "tag": "0013_admin_level_five_grants_override_expired_subscriptions",
+      "breakpoints": true
     }
   ]
 }
