@@ -197,6 +197,29 @@ export const Route = createFileRoute("/api/public/subscriptions")({
           }
 
           if (!isAdmin) return json({ error: "Acesso negado." }, 403);
+          if (body.action === "rename-legacy-duplicate-plans") {
+            const renamedPlans = [
+              ["Cópia de Free", "Essencial"],
+              ["Cópia de Cópia de Free", "Intermediário"],
+              ["Cópia de Cópia de Cópia de Free", "Avançado"],
+              ["Cópia de Cópia de Cópia de Cópia de Free", "Completo e PJ"],
+            ];
+            let renamed = 0;
+            const now = new Date().toISOString();
+            for (const [oldName, newName] of renamedPlans) {
+              const { data, error } = await supabaseAdmin
+                .from("subscription_plans")
+                .update({ name: newName, slug: planSlug(newName), updated_at: now })
+                .eq("name", oldName)
+                .select("id");
+              if (error) {
+                console.error("[subscriptions] Could not rename legacy duplicated plan", { code: error.code || "unknown" });
+                return json({ error: "Não foi possível atualizar os nomes dos planos. Tente novamente." }, 500);
+              }
+              renamed += data?.length || 0;
+            }
+            return json({ ok: true, renamed });
+          }
           if (body.action === "save-plan") {
             const id = String(body.id || "");
             const name = String(body.name || "").trim();
