@@ -1,4 +1,4 @@
-const CACHE_NAME='meu-patrimonio-shell-v30';
+const CACHE_NAME='meu-patrimonio-shell-v31';
 const APP_BASE=new URL('./',self.location.href);
 const APP_FILES=['./','./index.html','./styles.css','./bridge.js','./app.js','./financing.js','./finance-enhancements.js','./privacy-share.js','./finance-tools.js','./business-profile.js','./access-levels.js','./subscriptions.js','./subscriptions.css','./tutorial.js','./tutorial-default.md','./dashboard-refresh.js','./dashboard-refresh.css','./card-refresh.css','./card-ledger.js','./spending-insights.js','./spending-insights.css','./google-calendar.js','./visual-polish.css'].map(path=>new URL(path,APP_BASE).href);
 self.addEventListener('install',event=>event.waitUntil(caches.open(CACHE_NAME).then(cache=>cache.addAll(APP_FILES)).then(()=>self.skipWaiting())));
