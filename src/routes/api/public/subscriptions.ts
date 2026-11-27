@@ -236,7 +236,7 @@ export const Route = createFileRoute("/api/public/subscriptions")({
               if (error) return json({ error: planWriteErrorMessage(error, "atualizar") }, 500);
               return json({ ok: true });
             }
-            const { error } = await supabaseAdmin.from("subscription_plans").insert({
+            const { data: created, error } = await supabaseAdmin.from("subscription_plans").insert({
               slug: planSlug(name),
               name,
               description,
@@ -244,9 +244,9 @@ export const Route = createFileRoute("/api/public/subscriptions")({
               duration_days: durationDays,
               access_level: accessLevel,
               is_active: isActive,
-            });
+            }).select("id").single();
             if (error) return json({ error: planWriteErrorMessage(error, "criar") }, 500);
-            return json({ ok: true });
+            return json({ ok: true, id: created.id });
           }
           if (body.action === "archive-plan") {
             const id = String(body.id || "");
