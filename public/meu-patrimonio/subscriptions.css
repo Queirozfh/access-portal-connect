@@ -65,3 +65,31 @@ body[data-theme="dark"] .subscription-annual-quote{background:rgba(12,16,25,.26)
 body[data-theme="dark"] .subscription-annual-quote>div{border-color:rgba(170,185,208,.12)}
 @media(max-width:780px){.subscription-annual-upgrade-controls{grid-template-columns:repeat(2,minmax(0,1fr))}.subscription-annual-upgrade-controls .subscription-annual-days{grid-column:span 2}}
 @media(max-width:520px){.subscription-period-switch{width:100%}.subscription-period-switch button{flex:1;justify-content:center;padding:8px 9px;font-size:11px}.subscription-period-switch button span{font-size:8px}.subscription-annual-upgrade-controls{grid-template-columns:1fr}.subscription-annual-upgrade-controls .subscription-annual-days{grid-column:span 1}.subscription-annual-quote{grid-template-columns:1fr}.subscription-annual-quote .subscription-annual-quote-total{grid-column:auto}.subscription-annual-upgrade-heading h3{font-size:17px}.subscription-annual-disclaimer{text-align:left}.subscription-annual-request{max-width:none}}
+
+/* Highlights added to each tier and explicit PJ-exclusive comparison. */
+.subscription-plan-highlights{margin:12px 0 15px;border:1px solid color-mix(in srgb,#c39d60 24%,var(--line));border-radius:12px;background:color-mix(in srgb,#c39d60 5%,var(--paper));overflow:hidden}
+.subscription-plan-highlights summary{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 12px;cursor:pointer;list-style:none;color:var(--ink);font-size:10px;font-weight:750}
+.subscription-plan-highlights summary::-webkit-details-marker{display:none}
+.subscription-plan-highlights summary::after{content:"⌄";margin-left:auto;color:#c39d60;font-size:14px;transition:transform .18s ease}
+.subscription-plan-highlights[open] summary::after{transform:rotate(180deg)}
+.subscription-plan-highlights summary small{color:var(--muted);font-size:9px;font-weight:650;white-space:nowrap}
+.subscription-plan-highlights ul{display:grid;gap:7px;margin:0;padding:0 12px 12px;list-style:none}
+.subscription-plan-highlights li{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;color:var(--muted);font-size:10px;line-height:1.45}
+.subscription-plan-highlights li::before{content:"＋";flex:0 0 auto;color:#c39d60;font-weight:800}
+.subscription-plan-highlights li span{flex:1}
+.subscription-plan-highlights li small{flex:0 0 auto;padding:3px 6px;border:1px solid rgba(195,157,96,.36);border-radius:999px;color:#a17b3d;font-size:8px;font-weight:800;white-space:nowrap}
+.subscription-comparison-table thead th em{display:block;width:max-content;max-width:100%;margin:6px auto 0;padding:3px 6px;border:1px solid rgba(195,157,96,.32);border-radius:999px;color:#a17b3d;font-size:8px;font-style:normal;font-weight:750}
+.subscription-comparison-table thead th .subscription-compare-pj{background:rgba(195,157,96,.12)}
+.subscription-comparison-feature-label{display:block}
+.subscription-compare-availability{display:block;margin-top:4px;color:var(--muted);font-size:9px;font-weight:500}
+.subscription-compare-availability.is-exclusive{color:#a17b3d;font-weight:750}
+.subscription-comparison-table tbody tr.is-pj-exclusive th[scope="row"],.subscription-comparison-table tbody tr.is-pj-exclusive td{background:color-mix(in srgb,#c39d60 9%,var(--paper))}
+.subscription-comparison-pj-note{display:flex;align-items:center;gap:11px;margin:0 20px 14px;padding:11px 13px;border:1px solid rgba(195,157,96,.28);border-radius:12px;background:color-mix(in srgb,#c39d60 8%,var(--paper));color:var(--muted)}
+.subscription-comparison-pj-note>span{display:grid;place-items:center;width:30px;height:30px;flex:0 0 auto;border-radius:9px;background:rgba(195,157,96,.16);color:#a17b3d;font-size:16px}
+.subscription-comparison-pj-note p{margin:0;font-size:10px;line-height:1.5}
+.subscription-comparison-pj-note strong{color:var(--ink)}
+body[data-theme="dark"] .subscription-plan-highlights{background:rgba(195,157,96,.055);border-color:rgba(195,157,96,.25)}
+body[data-theme="dark"] .subscription-plan-highlights li small,body[data-theme="dark"] .subscription-compare-availability.is-exclusive{color:#d1ad6c}
+body[data-theme="dark"] .subscription-comparison-pj-note{background:rgba(195,157,96,.08);border-color:rgba(195,157,96,.25)}
+body[data-theme="dark"] .subscription-comparison-pj-note>span{color:#d1ad6c}
+@media(max-width:680px){.subscription-comparison-pj-note{margin:0 14px 12px}.subscription-plan-highlights li{flex-wrap:wrap}.subscription-plan-highlights li small{margin-left:20px}}
