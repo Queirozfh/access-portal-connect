@@ -3,28 +3,32 @@ let subscriptionCatalogCache = null;
 let adminPlanCache = [];
 
 function subscriptionsCall(method = "GET", body = null) {
-  const controller = new AbortController();
-  return new Promise((resolve, reject) => {
-    const timeout = setTimeout(() => {
+  const controller = method === "GET" ? new AbortController() : null;
+  const request = async () => {
+    const token = await cloudToken();
+    const response = await fetch("/api/public/subscriptions", {
+      method,
+      headers: {
+        Authorization: "Bearer " + token,
+        ...(body ? { "Content-Type": "application/json" } : {}),
+      },
+      ...(body ? { body: JSON.stringify(body) } : {}),
+      ...(controller ? { signal: controller.signal } : {}),
+    });
+    const result = await response.json().catch(() => ({}));
+    if (!response.ok) throw Error(result.error || "Não foi possível consultar os planos.");
+    return result;
+  };
+  if (!controller) return request();
+
+  let timeout;
+  const limit = new Promise((_, reject) => {
+    timeout = setTimeout(() => {
       controller.abort();
       reject(Error("O servidor demorou para responder. Tente carregar os planos novamente."));
-    }, 15000);
-    Promise.resolve().then(async () => {
-      const token = await cloudToken();
-      const response = await fetch("/api/public/subscriptions", {
-        method,
-        headers: {
-          Authorization: "Bearer " + token,
-          ...(body ? { "Content-Type": "application/json" } : {}),
-        },
-        ...(body ? { body: JSON.stringify(body) } : {}),
-        signal: controller.signal,
-      });
-      const result = await response.json().catch(() => ({}));
-      if (!response.ok) throw Error(result.error || "Não foi possível consultar os planos.");
-      return result;
-    }).then(resolve, reject).finally(() => clearTimeout(timeout));
+    }, 90000);
   });
+  return Promise.race([request(), limit]).finally(() => clearTimeout(timeout));
 }
 
 function subscriptionMoney(cents) {
